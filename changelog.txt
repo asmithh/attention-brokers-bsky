@@ -14,4 +14,12 @@ missing from the data (i.e. zero follows to the reposted account on that day),
 we just have a row missing from the dataset. Will need to fix that in post or
 handle the data better while parsing it.
 
+20260211 6:30am:
+saw that parse_reposts_and_extract_follow_timings finished for Jorts in 
+about an hour with follows_all.csv (the full follow dataset). It fit into RAM, 
+so I edited parse_reposts_and_extract_follow_timings to go from a script that
+runs for one handle to a script with a csv-making function that can iterate
+over multiple handles more efficiently. It takes the overall follow dataframe
+and a user's handle as arguments. I've queued it up to run on the cluster and
+it's currently pending.
 
