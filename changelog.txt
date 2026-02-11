@@ -1,0 +1,17 @@
+20260210 9pm:
+working on debugging parse_reposts_and_extract_follow_timings using
+follows_sample.csv. having issues with datetime parsing in polars -- the
+datetime formatting from Bluesky is inconsistent. The follows_sample.csv file
+has every other row blank because of how I formatted it when sampling from the
+partial follows.csv file. Once we drop the null rows, the error rate for
+created_at is 0.005. This seems acceptable. 
+
+20260210 10pm:
+got parse_reposts_and_extract_follow_timings working with follows_sample.csv.
+Setting it to run overnight with the full follow dataset. Not sure it will fit
+into the RAM I've allocated (40000M iirc). If a time slot in [-14, 13] is
+missing from the data (i.e. zero follows to the reposted account on that day),
+we just have a row missing from the dataset. Will need to fix that in post or
+handle the data better while parsing it.
+
+

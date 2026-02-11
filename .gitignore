@@ -1,2 +1,3 @@
 handles_to_dids.json
 bsky_reposts/*.json
+.ipynb_checkpoints/*
