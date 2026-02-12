@@ -23,3 +23,15 @@ over multiple handles more efficiently. It takes the overall follow dataframe
 and a user's handle as arguments. I've queued it up to run on the cluster and
 it's currently pending.
 
+20260211 7pm:
+drafted code to obtain capture histories for followers and non-followers per
+retweeted account. for each account we see following at least one retweeted
+account, we should have a line in a capture history file. the line should be
+of length n_days, where n_days is the number of days between the max and min 
+retweet with 14 days of buffer on either side. The 14 days of buffer captures
+the pre-retweet data collection for the first retweet on the left hand side
+and the post-retweet data collection for the last retweet on the right hand
+side. For each character in the line corresponding to one account, we put
+a 0 if we did not see that account follow any retweeted account in the 
+dataset. We put a 1 if it followed any retweeted account in the dataset on 
+that day. Now pushing this code to git to test on the UVA cluster.
