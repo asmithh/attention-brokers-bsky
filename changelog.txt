@@ -41,4 +41,6 @@ Got code working with follows_sample.csv to obtain toy capture histories.
 Going to try running make_mark_capture_history.py for one account (Jorts)
 with follows_all.csv to see if it works still. Also planning to test the
 newly created toy mark-recapture history files to make sure they run with 
-MARK in R. 
+MARK in R. Next todo is to fix the missing lines in the dataset when there
+are zero follows to the retweeted account in that population on the day.
+
