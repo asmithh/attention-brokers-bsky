@@ -44,3 +44,11 @@ newly created toy mark-recapture history files to make sure they run with
 MARK in R. Next todo is to fix the missing lines in the dataset when there
 are zero follows to the retweeted account in that population on the day.
 
+20260212 10am:
+Wrote code to interpolate the time_period variable (absolute days since first
+repost) as well as to fill in zeros for days we didn't have any follow data for.
+It runs pretty fast, so I've run it on all the raw DID data CSVs I have created
+so far. This is in interpolate_missing_did_data.py. It's not super elegant,
+but it gets the job done. I'm running more MARK dataset generation and making 
+more raw DiD files. Some of the MARK files are likely going to be quite big, so
+transferring them around will be annoying but not insurmountable.

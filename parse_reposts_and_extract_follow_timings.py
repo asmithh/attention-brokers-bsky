@@ -143,7 +143,6 @@ def make_did_csv(HANDLE, df_follows):
     print('done')
 
 
-for handle in AB_DIDS.keys():
-    if handle != 'jortsthecat.bsky.social':
-        print(handle)
-        make_did_csv(handle, df_follows)
+for handle in list(AB_DIDS.keys())[4:]:
+    print(handle)
+    make_did_csv(handle, df_follows)

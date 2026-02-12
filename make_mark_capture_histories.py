@@ -151,7 +151,6 @@ def make_mark_data(HANDLE, df_follows):
                     vec[follow_time_mapping[day]] = 1
                 fout.write(''.join([str(int(vv)) for vv in vec]) + ';\n')  
 
-for handle in AB_DIDS.keys():
+for handle in list(AB_DIDS.keys())[1:]:
     print(handle)
     make_mark_data(handle, df_follows)
-    break
