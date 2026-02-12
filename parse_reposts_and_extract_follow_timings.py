@@ -7,28 +7,24 @@ import numpy as np
 import polars as pl
 from polars.datatypes import String, Int64, Datetime
 
-FILEPATH = '/scratch/nte5cp'
+from utils import *
+"""
+Makes CSVs with the following columns:
+    gain_rate: int; how many accounts of type ever_treated followed unit_id on day time_period?
+    ever_treated: bool; indicates if the accounts that followed unit_id in this row were followers or non-followers of the attention broker
+    unit_id: int; identifies the reposted account (i.e. the account whose content the attention broker reposted)
+    time_period: int; number of days elapsed since earliest repost event in the dataset
+    ts: int; days relative to the repost event
+
+Some combinations of [ever-treated, unit_id, and ts] will be missing; we handle these with a separate script.
+"""
+
+FILEPATH = '/scratch/nte5cp' # change this for your machine
 AB_DIDS = json.load(open(f'{FILEPATH}/handles_to_dids.json', 'r'))
 
-
-# FILEPATH = '/Users/a404/attention-brokers-bsky/'
-
+# set conservative upper bound on repost events we'll study.
 REPOST_CUTOFF = dt.datetime(year=2025, month=9, day=15, tzinfo=ZoneInfo("UTC"))
 
-def extract_did_from_uri(uri):
-    uri_split_slashes = uri.split('/')
-    return uri_split_slashes[2]
-
-def parse_repost_dict(repost_dict):
-    reposter = extract_did_from_uri(repost_dict['uri'])
-    orig_poster = extract_did_from_uri(repost_dict['reposted'])
-    created_at = repost_dict['created-at']
-    
-    return {
-        'reposter': reposter,
-        'orig_poster': orig_poster,
-        'created_at': created_at.replace('Z', '+00:00'),
-    }
 
 df_follows = pl.read_csv(
     f'{FILEPATH}/follows_all.csv', 
