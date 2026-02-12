@@ -4,6 +4,7 @@ import json
 from zoneinfo import ZoneInfo
 
 import numpy as np
+import pandas as pd
 import polars as pl
 from polars.datatypes import String, Int64, Datetime
 
@@ -50,6 +51,7 @@ df_follows = df_follows.with_columns(
         strict=False,
     ))
 )
+
 
 def make_mark_data(HANDLE, df_follows):
     AB_DID = AB_DIDS[HANDLE]
@@ -115,38 +117,41 @@ def make_mark_data(HANDLE, df_follows):
             set(follows_to_op_following_ab.filter(pl.col('ab_follower') == True)['from'].to_numpy().tolist())
         non_followers_following = non_followers_following | \
             set(follows_to_op_following_ab.filter(pl.col('ab_follower') == False)['from'].to_numpy().tolist())
-
-    follow_time_range = pl.time_range(
-        start=MIN_REPOST_DAY - dt.timedelta(days=14),
-        end=MAX_REPOST_DAY + dt.timedelta(days=14),
-        interval='1d',
-    )
+    
+    
+    pl.col("sets").list.set_intersection([1,7]).list.len() != 0
+    follow_time_range = pd.date_range(
+        start=MIN_REPOST_DAY.replace(hour=0, minute=0, second=0, microsecond=0) - dt.timedelta(days=14),
+        end=MAX_REPOST_DAY.replace(hour=0, minute=0, second=0, microsecond=0) + dt.timedelta(days=14),
+        freq='1d')
+    original_posters = list(original_posters)
     follow_time_mapping = {day: ix for ix, day in enumerate(follow_time_range)}
     
     for acct_set, set_name in (
         (ab_followers_following, 'ab_followers'),
         (non_followers_following, 'non_followers')
     ):
+        acct_set = list(acct_set)
         accts_that_followed_rted_acct = df_follows.filter(
-            pl.col('from').isin(acct_set),
-            pl.col('to').isin(original_posters),
+            pl.col('from').is_in(acct_set),
+            pl.col('to').is_in(original_posters),
             pl.col('created_at') >= MIN_REPOST_DAY - dt.timedelta(days=14),
             pl.col('created_at') <= MAX_REPOST_DAY + dt.timedelta(days=14),
         )
         accts_that_followed_rted_acct = accts_that_followed_rted_acct.with_columns(
             pl.col('created_at').dt.truncate('1d').alias('created_at_floor_day'),
         )
-
+    
         followers_by_days_followed = accts_that_followed_rted_acct.group_by('from').agg(pl.col('created_at_floor_day').unique())
         
-        with open(f'{FILEPATH}/mark_data/{HANDLE}_{set_name}.txt') as fout:
+        with open(f'{FILEPATH}/mark_data/{HANDLE}_{set_name}.txt', 'w') as fout:
             for row in followers_by_days_followed.iter_rows(named=True):
                 vec = np.zeros(len(follow_time_mapping))
                 for day in row['created_at_floor_day']:
                     vec[follow_time_mapping[day]] = 1
-                fout.write(''.join([str(vv) for vv in vec]) + ';\n')         
-
+                fout.write(''.join([str(int(vv)) for vv in vec]) + ';\n')  
 
 for handle in AB_DIDS.keys():
     print(handle)
     make_mark_data(handle, df_follows)
+    break
