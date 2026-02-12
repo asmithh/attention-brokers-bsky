@@ -1,3 +1,8 @@
 handles_to_dids.json
 bsky_reposts/*.json
 .ipynb_checkpoints/*
+*.csv
+handles_to_foll_population.json
+mark_data/*
+interpolated_did_csvs/*
+processed_did_csvs/*

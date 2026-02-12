@@ -55,3 +55,26 @@ transferring them around will be annoying but not insurmountable.
 
 20260212 11am:
 Thoroughly commented code; parceled out reused utility functions to utils.py.
+
+20260212 2pm:
+Added plots.ipynb, which plots per-day per-capita follower accumulation rates for 
+both non-followers of the attention broker as well as the attention broker's followers.
+plots.ipynb also contains functionality for making the CSVs that are fed into the 
+differences-in-differences analysis. 
+
+Also added diff_in_diff.R, in consultation with Fiona. This contains code for estimating
+an overall post-treatment effect of exposure to a repost, as well as an event study
+for estimating the effect of a repost on per-day per-capita following rate. For the data
+we have (followers + non-followers' following rates over 28 days for each reposted account;
+very spread out over time; lacking measurements over the entire time period studied; no 
+never-treated units), it makes more sense to treat followers' per-day per-capita following
+rates as the outcome variable in one DiD analysis (where all units are treated), and
+then treat non-followers' per-day per-capita following rates as the outcome variable in
+another DiD analysis (where, again, we count all units as treated). Then we can compare
+the effect sizes for followers and non-followers to say that being an attention broker's 
+follow causes an increase in following rate on (e.g.) day 0.
+
+So far, the Bluesky data is a mixed bag. Aaron Rupar looks like an attention broker, but
+the other three accounts I've looked at so far -- Jorts the Cat, Paul Frazee, and Patton 
+Oswalt -- look very different, but they're different from Aaron Rupar in very similar ways.
+I don't think the other 3 are attention brokers though.
