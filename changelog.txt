@@ -52,3 +52,6 @@ so far. This is in interpolate_missing_did_data.py. It's not super elegant,
 but it gets the job done. I'm running more MARK dataset generation and making 
 more raw DiD files. Some of the MARK files are likely going to be quite big, so
 transferring them around will be annoying but not insurmountable.
+
+20260212 11am:
+Thoroughly commented code; parceled out reused utility functions to utils.py.

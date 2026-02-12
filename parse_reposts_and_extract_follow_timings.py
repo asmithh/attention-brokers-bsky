@@ -25,13 +25,15 @@ AB_DIDS = json.load(open(f'{FILEPATH}/handles_to_dids.json', 'r'))
 # set conservative upper bound on repost events we'll study.
 REPOST_CUTOFF = dt.datetime(year=2025, month=9, day=15, tzinfo=ZoneInfo("UTC"))
 
-
+# this takes a long time to load because it's 220 GB of data.
 df_follows = pl.read_csv(
     f'{FILEPATH}/follows_all.csv', 
     has_header=False, 
     new_columns=["from", "to", "created_at"],
 )
-df_follows = df_follows.drop_nulls()
+df_follows = df_follows.drop_nulls() # drop any empty values 
+# parse datetimes; datetime formatting is somewhat inconsistent within the CSV.
+# This will leave very few NaN datetimes that don't match either format (about 0.005 error rate).
 df_follows = df_follows.with_columns(
     pl.when(
         pl.col('created_at').str.tail(1) == 'Z').then(
@@ -48,8 +50,22 @@ df_follows = df_follows.with_columns(
 )
 
 def make_did_csv(HANDLE, df_follows):
-    AB_DID = AB_DIDS[HANDLE]
+    """
+    Make CSV of data for use with difference-in-differences. Columns are explained at the top of the file.
+
+    Inputs:
+        HANDLE: attention broker's Bluesky handle
+        df_follows: polars dataframe of follow events w/ columns 
+            from (follower), to (followed), and created_at (follow timestamp)
+
+    Outputs:
+        No output variables; writes output to a .csv file
+    """
+    AB_DID = AB_DIDS[HANDLE] # get DID of attention broker
+    # get all the attention broker's followers
     followers_of_ab = df_follows.filter(pl.col('to') == AB_DID)
+
+    # load attention broker's reposts and create a polars dataframe
     reposts = json.load(open(f'{FILEPATH}/bsky_reposts/{HANDLE}.json', 'r'))
     reposts = [parse_repost_dict(r) for r in reposts]
     df_reposts = pl.DataFrame(reposts)
@@ -59,30 +75,39 @@ def make_did_csv(HANDLE, df_follows):
             time_zone='UTC'
         )
     )
+    # filter to reposts that are before the cutoff date
     df_reposts = df_reposts.filter(pl.col('created_at') <= REPOST_CUTOFF)
+    # filter out self-reposts
     df_reposts = df_reposts.filter(pl.col('orig_poster') != AB_DID)
+    # only analyze the first repost by the attention broker
     df_reposts = df_reposts.group_by(pl.col('orig_poster')).agg(pl.col('created_at').min())
-    
+
+    # get earliest repost to make relative time_period column
     MIN_REPOST_DAY = df_reposts.select(pl.col('created_at')).min().item()
     print(MIN_REPOST_DAY)
     
-    data_final = []
+    data_final = [] # will be used to create dataframe of DiD data.
     for ix, row in enumerate(df_reposts.iter_rows(named=True)):
+        # this looks weird, but it means I can do polars dataframe math with repost_created_at
         repost_created_at = pl.DataFrame({'created_at': [row['created_at']]})
-        repost_period = (repost_created_at.item() - MIN_REPOST_DAY).days
+        repost_period = (repost_created_at.item() - MIN_REPOST_DAY).days # relative date of repost
         
-        orig_poster = row['orig_poster']
-        low_follow_bound = row['created_at'] - dt.timedelta(days=14)
-        high_follow_bound = row['created_at'] + dt.timedelta(days=14)
-    
+        orig_poster = row['orig_poster'] # referred to as OP (original poster) in these comments
+        low_follow_bound = row['created_at'] - dt.timedelta(days=14) # the minimum day we will collect following data for
+        high_follow_bound = row['created_at'] + dt.timedelta(days=14) # the maximum day we will collect following data for
+
+        # get all the follows to OP that could've happened in the time we observed
         follows_to_op = df_follows.filter(
             (pl.col('created_at') <= high_follow_bound) & \
             (pl.col('created_at') >= low_follow_bound) & \
             (pl.col('to') == orig_poster)
         )
+        # populate with a column for when the repost was created
         follows_to_op = follows_to_op.with_columns(
             pl.lit(repost_created_at.item(), dtype=Datetime).alias('repost_created_at')
         )
+        # join with attention broker follow information; a non-empty value V in created_at_from_ab 
+        # indicates that an account that we know followed OP also followed the attention broker at time V.
         follows_to_op_following_ab = follows_to_op.join(
             followers_of_ab, 
             on='from', 
@@ -93,29 +118,35 @@ def make_did_csv(HANDLE, df_follows):
         # created_at is the time the follower --> reposted acct tie formed
     
         # first, figure out when the follower --> reposted tie happened relative to the repost
+        # pl.col('whatever1').sub(pl.col('whatever2')) subtracts the values in whatever2 from the values in whatever1.
         follows_to_op_following_ab = follows_to_op_following_ab.with_columns(
             ((pl.col('repost_created_at').sub(pl.col('created_at'))).dt.total_days()).alias('days_before_after_repost'),
             (pl.col('created_at_from_ab').fill_null(repost_created_at.item()))
         )
+        # obtain all follow events prior to repost
         followers_before_repost = follows_to_op_following_ab.filter(
             pl.col('days_before_after_repost') < 0
         )
+        # obtain all follow events after repost
         followers_after_repost = follows_to_op_following_ab.filter(
             pl.col('days_before_after_repost') >= 0
         )
-    
+
+        # figure out who is a follower of the attention broker and was therefore "treated" at the time they followed OP
         followers_before_repost = followers_before_repost.with_columns(
             ((pl.col('created_at').sub(pl.col('created_at_from_ab'))).dt.total_seconds() > 0).alias('ab_follower')
         )
         followers_after_repost = followers_after_repost.with_columns(
             ((pl.col('repost_created_at').sub(pl.col('created_at_from_ab'))).dt.total_seconds() > 0).alias('ab_follower')
         )
-    
+
+        # obtain per-day total follow counts
         followers_before_repost = followers_before_repost.group_by(
             [pl.col('days_before_after_repost'), pl.col('ab_follower')]).agg(pl.col('from').count())
         followers_after_repost = followers_after_repost.group_by(
             [pl.col('days_before_after_repost'), pl.col('ab_follower')]).agg(pl.col('from').count())
-        
+
+        # add to dataset
         for row in followers_before_repost.iter_rows(named=True):
             data_final.append({
                 'gain_rate': row['from'],
@@ -133,7 +164,8 @@ def make_did_csv(HANDLE, df_follows):
                 'time_period': repost_period + row['days_before_after_repost'],
                 'ts': row['days_before_after_repost'],
             })
-    
+            
+    # build dataframe from list of dicts
     data = pl.DataFrame(data_final)    
     data.write_csv(f'{FILEPATH}/did_csvs/{HANDLE}.csv')
     print('done')
