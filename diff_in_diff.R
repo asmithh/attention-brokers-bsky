@@ -1,6 +1,8 @@
 library(fixest)
 library(HonestDiD)
 library(data.table)
+library(dplyr)    # alternatively, this also loads %>%
+library(ggplot2)
 
 cls = c(
   period = "numeric",
@@ -12,7 +14,7 @@ cls = c(
 )
 
 data = fread(
-  '~/attention-brokers-bsky/atrupar.com_processed_did_data.csv', 
+  '~/attention-brokers-bsky/processed_did_csvs/atrupar.com_processed_did_data.csv', 
   colClasses=cls
 )
 
@@ -25,4 +27,8 @@ twfe_fol = feols(gain_rate_fol ~ i(ts, ref=-13)  |
 
 twfe_non = feols(gain_rate_non ~ i(ts, ref=-13)  | 
                unit_id, cluster=~unit_id, data=data)
-iplot(list(twfe_fol, twfe_non), main="Effect of Retweet on Follow Rate", col=c("red", "steelblue"))
+iplot(
+  list(twfe_fol, twfe_non), 
+  main="Effect of Retweet on Follow Rate", 
+  col=c("red", "steelblue")
+)
