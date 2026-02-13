@@ -1,6 +1,7 @@
 handles_to_dids.json
 bsky_reposts/*.json
 .ipynb_checkpoints/*
+__pycache__/*
 *.csv
 handles_to_foll_population.json
 mark_data/*

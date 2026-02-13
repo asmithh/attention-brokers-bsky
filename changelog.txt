@@ -78,3 +78,13 @@ So far, the Bluesky data is a mixed bag. Aaron Rupar looks like an attention bro
 the other three accounts I've looked at so far -- Jorts the Cat, Paul Frazee, and Patton 
 Oswalt -- look very different, but they're different from Aaron Rupar in very similar ways.
 I don't think the other 3 are attention brokers though.
+
+20260212 10pm:
+Working on population estimation with RMark. The raw capture history files are so big,
+the POPAN model doesn't run in a reasonable amount of time. I'm trying taking a 10%
+random sample of the capture histories, running that through POPAN, and multiplying
+the result by 10. I will ask on the PhiDot official forum if this is okay to do.
+I tried to register for the forum but it operates on a manual approval basis. 
+I am currently getting population estimates for Aaron Rupar's non-followers. 
+The non-follower population for Jorts was lower than expected. The effect size
+for Aaron Rupar was much smaller than expected (1e-10), so I will look into that. 

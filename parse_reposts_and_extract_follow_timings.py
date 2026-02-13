@@ -171,6 +171,6 @@ def make_did_csv(HANDLE, df_follows):
     print('done')
 
 
-for handle in list(AB_DIDS.keys())[4:]:
+for handle in list(AB_DIDS.keys())[::-1]:
     print(handle)
     make_did_csv(handle, df_follows)
