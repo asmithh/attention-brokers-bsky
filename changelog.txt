@@ -100,3 +100,21 @@ file handles and DIDs. I also added functionality to make_mark_capture_histories
 parse_reposts_and_extract_follow_timings that will automatically check if a handle
 has a file in the relevant directory already. If it does, it will not run the 
 processing for that handle again. 
+
+20260213 10am:
+Giving up on RMark for the time being -- all of the Jamelle Bouie input files, 
+including an inordinately small 5% sample file, resulted in numeric convergence issues.
+I'm going to use the number of unique followers/non-followers who ever followed an account
+retweeted by the attention broker as a best guess for population. I created plots for the 
+users for whom I have MARK input files already (just by counting the lines, because
+each line is one individual's capture history) to depict the per-day per-capita follower
+accumulation trajectories. Jamelle Bouie might be the same kind of user that Aaron Rupar 
+is, although the coefficients for him on day 0 aren't as well separated for followers
+and non-followers as they are for Aaron Rupar. Taylor Lorenz also experiences a smaller
+drop in followers' per-capita following rate compared to the other accounts that don't
+see a spike in followers' following rates on day 0. I've included event study plots
+for Aaron Rupar and Jamelle Bouie in the repo. I also have either raw or per-capita
+follow trend plots for all accounts for whom I have a raw follow rate file on the 
+UVA HPC cluster. 
+
+

@@ -14,7 +14,7 @@ cls = c(
 )
 
 data = fread(
-  '~/attention-brokers-bsky/processed_did_csvs/atrupar.com_processed_did_data.csv', 
+  '~/attention-brokers-bsky/processed_did_csvs/jamellebouie.net_processed_did_data.csv', 
   colClasses=cls
 )
 
@@ -29,6 +29,6 @@ twfe_non = feols(gain_rate_non ~ i(ts, ref=-13)  |
                unit_id, cluster=~unit_id, data=data)
 iplot(
   list(twfe_fol, twfe_non), 
-  main="Effect of Retweet on Follow Rate", 
+  main="jamellebouie.net: Effect of Retweet on Follow Rate", 
   col=c("red", "steelblue")
 )
