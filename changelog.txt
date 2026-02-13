@@ -78,3 +78,25 @@ So far, the Bluesky data is a mixed bag. Aaron Rupar looks like an attention bro
 the other three accounts I've looked at so far -- Jorts the Cat, Paul Frazee, and Patton 
 Oswalt -- look very different, but they're different from Aaron Rupar in very similar ways.
 I don't think the other 3 are attention brokers though.
+
+20260212 10pm:
+Working on population estimation with RMark. The raw capture history files are so big,
+the POPAN model doesn't run in a reasonable amount of time. I'm trying taking a 10%
+random sample of the capture histories, running that through POPAN, and multiplying
+the result by 10. I will ask on the PhiDot official forum if this is okay to do.
+I tried to register for the forum but it operates on a manual approval basis. 
+I am currently getting population estimates for Aaron Rupar's non-followers. 
+The non-follower population for Jorts was lower than expected. The effect size
+for Aaron Rupar was much smaller than expected (1e-10), so I will look into that. 
+
+20260213 7:30am:
+Ended up needing to subsample the 10% Aaron Rupar non-follower sample again 
+for a 5% sample. The 10% sample didn't reach numeric convergence. I think I am pushing
+the MARK program to its limits, because I don't think ecologists have such lengthy 
+capture histories or such large populations. Some of the raw follow count CSVs and the 
+MARK capture histories finished up overnight. I am going to try to look for more 
+attention brokers; I've pulled reposts from a few accounts so will add those to the 
+file handles and DIDs. I also added functionality to make_mark_capture_histories and
+parse_reposts_and_extract_follow_timings that will automatically check if a handle
+has a file in the relevant directory already. If it does, it will not run the 
+processing for that handle again. 

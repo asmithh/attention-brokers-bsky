@@ -170,7 +170,9 @@ def make_did_csv(HANDLE, df_follows):
     data.write_csv(f'{FILEPATH}/did_csvs/{HANDLE}.csv')
     print('done')
 
-
-for handle in list(AB_DIDS.keys())[4:]:
+DID_FILES = os.listdir(f'{FILEPATH}/did_csvs')
+PROCESSED_HANDLES = set([d[:-4] for d in DID_FILES])
+for handle in list(AB_DIDS.keys()):
     print(handle)
-    make_did_csv(handle, df_follows)
+    if handle not in PROCESSED_HANDLES:
+        make_did_csv(handle, df_follows)

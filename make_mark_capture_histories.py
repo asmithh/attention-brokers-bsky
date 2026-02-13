@@ -1,6 +1,7 @@
 import datetime as dt
 import gc
 import json
+import random
 from zoneinfo import ZoneInfo
 
 import numpy as np
@@ -151,6 +152,9 @@ def make_mark_data(HANDLE, df_follows):
         (ab_followers_following, 'ab_followers'),
         (non_followers_following, 'non_followers')
     ):
+        # take 10% random sample of accounts so that RMark can handle the input.
+        if random.randint(0, 10) != 5:
+            continue
         acct_set = list(acct_set)
         # obtain all follow events that occurred from an account 
         # in the set of either {attention broker followers, attention broker non-followers}
@@ -171,7 +175,7 @@ def make_mark_data(HANDLE, df_follows):
         # produce a list of days on which we observe A following a reposted account.
         followers_by_days_followed = accts_that_followed_rted_acct.group_by('from').agg(pl.col('created_at_floor_day').unique())
         
-        with open(f'{FILEPATH}/mark_data/{HANDLE}_{set_name}.txt', 'w') as fout:
+        with open(f'{FILEPATH}/mark_data/{HANDLE}_{set_name}_ten_pct.txt', 'w') as fout:
             for row in followers_by_days_followed.iter_rows(named=True):
                 # for each account A in this set of users, we write a line in fout to represent their capture history.
                 vec = np.zeros(len(follow_time_mapping)) # make an array of zeros, one for each day of the period we look at
@@ -179,7 +183,10 @@ def make_mark_data(HANDLE, df_follows):
                     vec[follow_time_mapping[day]] = 1 # flip the entry for any day where a follow from A occurred to 1
                 fout.write(''.join([str(int(vv)) for vv in vec]) + ';\n')  
 
+MARK_FILES = os.listdir(f'{FILEPATH}/mark_data')
+PROCESSED_HANDLES = set([d.split('_non_followers.txt')[0] for d in MARK_FILES])
 # currently we've written the capture history for Jorts only.
-for handle in list(AB_DIDS.keys())[1:]:
+for handle in list(AB_DIDS.keys()):
     print(handle)
-    make_mark_data(handle, df_follows)
+    if handle not in PROCESSED_HANDLES:
+        make_mark_data(handle, df_follows)
