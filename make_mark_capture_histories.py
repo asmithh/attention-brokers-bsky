@@ -183,7 +183,10 @@ def make_mark_data(HANDLE, df_follows):
                     vec[follow_time_mapping[day]] = 1 # flip the entry for any day where a follow from A occurred to 1
                 fout.write(''.join([str(int(vv)) for vv in vec]) + ';\n')  
 
+MARK_FILES = os.listdir(f'{FILEPATH}/mark_data')
+PROCESSED_HANDLES = set([d.split('_non_followers.txt')[0] for d in MARK_FILES])
 # currently we've written the capture history for Jorts only.
-for handle in list(AB_DIDS.keys())[::-1]:
+for handle in list(AB_DIDS.keys()):
     print(handle)
-    make_mark_data(handle, df_follows)
+    if handle not in PROCESSED_HANDLES:
+        make_mark_data(handle, df_follows)
