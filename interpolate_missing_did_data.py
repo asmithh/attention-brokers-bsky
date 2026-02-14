@@ -9,17 +9,23 @@ The raw data has missing rows on for [unit_id, ts, ever_treated] combinations wh
 This code fills in the missing rows with zeros for gain_rate and interpolated time_period based on alignment between 
 existing time_period values and ts values. 
 
-Run as python3 interpolate_missing_did_data.py BSKY_HANDLE
+Run as python3 interpolate_missing_did_data.py $HANDLE $DAYS_FWD $DAYS_BWD
+HANDLE is the Bluesky handle of the attention broker
+DAYS_FWD is the number of days for which we have data after the repost
+DAYS_BWD is the number of days for which we have data before the repost
 """
 
 HANDLE = sys.argv[1]
+DAYS_FWD = int(sys.argv[2])
+DAYS_BWD = int(sys.argv[3])
+
 FILEPATH = '/scratch/nte5cp' # change this for your machine
 
-df = pd.read_csv(f'{FILEPATH}/did_csvs/{HANDLE}.csv')
+df = pd.read_csv(f'{FILEPATH}/did_csvs/{HANDLE}_fwd_{DAYS_FWD}_bwd_{DAYS_BWD}.csv')
 
 # Building a MultiIndex to fill in NaNs for missing data.
 # These are the combinations of values we should have, but some combinations will be missing.
-iterables = [df['unit_id'].unique(), [True, False], range(-14, 14)]
+iterables = [df['unit_id'].unique(), [True, False], range(-1 * DAYS_BWD, DAYS_FWD)]
 # Create a new index and reset index
 # per this StackOverflow post:
 # https://stackoverflow.com/questions/25909984/missing-data-insert-rows-in-pandas-and-fill-with-nan
@@ -87,4 +93,4 @@ def complete_interpolation_for_unit(gr):
 time_period_by_unit = df.groupby('unit_id').apply(complete_interpolation_for_unit).explode() # flatten list of lists
 df['time_period'] = time_period_by_unit.to_list() # add interpolated time_period column
 
-df.to_csv(f'{FILEPATH}/interpolated_did_csvs/{HANDLE}.csv')
+df.to_csv(f'{FILEPATH}/interpolated_did_csvs/{HANDLE}_fwd_{DAYS_FWD}_bwd_{DAYS_BWD}.csv')

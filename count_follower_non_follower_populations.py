@@ -1,32 +1,28 @@
 import datetime as dt
 import gc
 import json
-import os
+import random
 import sys
 from zoneinfo import ZoneInfo
 
 import numpy as np
+import pandas as pd
 import polars as pl
 from polars.datatypes import String, Int64, Datetime
 
 from utils import *
 """
-Makes CSVs with the following columns:
-    gain_rate: int; how many accounts of type ever_treated followed unit_id on day time_period?
-    ever_treated: bool; indicates if the accounts that followed unit_id in this row were followers or non-followers of the attention broker
-    unit_id: int; identifies the reposted account (i.e. the account whose content the attention broker reposted)
-    time_period: int; number of days elapsed since earliest repost event in the dataset
-    ts: int; days relative to the repost event
+Used to count all followers and non-followers who followed at least one account reposted by an attention broker; 
+outputs a JSON file with keys 'ab_followers' and 'non_followers' corresponding to the number of unique
+attention broker followers and unique non-followers observed in the dataset.
 
-Some combinations of [ever-treated, unit_id, and ts] will be missing; we handle these with a separate script.
-
-Run as python3 parse_reposts_and_extract_follow_timings.py $AB_HANDLE $DAYS_FWD $DAYS_BWD
-AB_HANDLE is the Bluesky handle of the attention broker
-DAYS_FWD is the number of days for which we want data after the repost
-DAYS_BWD is the number of days for which we want data before the repost
+Run as python3 count_follower_non_follower_populations.py $HANDLE $DAYS_FWD $DAYS_BWD
+HANDLE is the Bluesky handle of the attention broker
+DAYS_FWD is the number of days for which we have data after the repost
+DAYS_BWD is the number of days for which we have data before the repost
 """
 
-AB_HANDLE = sys.argv[1]
+HANDLE = sys.argv[1]
 DAYS_FWD = int(sys.argv[2])
 DAYS_BWD = int(sys.argv[3])
 
@@ -34,7 +30,7 @@ FILEPATH = '/scratch/nte5cp' # change this for your machine
 AB_DIDS = json.load(open(f'{FILEPATH}/handles_to_dids.json', 'r'))
 
 # set conservative upper bound on repost events we'll study.
-REPOST_CUTOFF = dt.datetime(year=2025, month=9, day=15, tzinfo=ZoneInfo("UTC"))
+REPOST_CUTOFF = dt.datetime(year=2025, month=9, day=15, tzinfo=ZoneInfo("UTC")) 
 
 # this takes a long time to load because it's 220 GB of data.
 df_follows = pl.read_csv(
@@ -60,9 +56,10 @@ df_follows = df_follows.with_columns(
     ))
 )
 
-def make_did_csv(HANDLE, df_follows, days_fwd, days_bwd):
+def count_populations(HANDLE, df_follows, days_fwd, days_bwd):
     """
-    Make CSV of data for use with difference-in-differences. Columns are explained at the top of the file.
+    Make capture histories for followers and non-followers of an attention broker.
+    Write capture histories to a file in the format MARK expects.
 
     Inputs:
         HANDLE: attention broker's Bluesky handle
@@ -70,11 +67,11 @@ def make_did_csv(HANDLE, df_follows, days_fwd, days_bwd):
             from (follower), to (followed), and created_at (follow timestamp)
 
     Outputs:
-        No output variables; writes output to a .csv file
+        No output variables; writes output to a .txt file
     """
     AB_DID = AB_DIDS[HANDLE] # get DID of attention broker
     # get all the attention broker's followers
-    followers_of_ab = df_follows.filter(pl.col('to') == AB_DID)
+    followers_of_ab = df_follows.filter(pl.col('to') == AB_DID) 
 
     # load attention broker's reposts and create a polars dataframe
     reposts = json.load(open(f'{FILEPATH}/bsky_reposts/{HANDLE}.json', 'r'))
@@ -87,21 +84,17 @@ def make_did_csv(HANDLE, df_follows, days_fwd, days_bwd):
         )
     )
     # filter to reposts that are before the cutoff date
-    df_reposts = df_reposts.filter(pl.col('created_at') <= REPOST_CUTOFF)
+    df_reposts = df_reposts.filter(pl.col('created_at') <= REPOST_CUTOFF) 
     # filter out self-reposts
     df_reposts = df_reposts.filter(pl.col('orig_poster') != AB_DID)
     # only analyze the first repost by the attention broker
     df_reposts = df_reposts.group_by(pl.col('orig_poster')).agg(pl.col('created_at').min())
 
-    # get earliest repost to make relative time_period column
-    MIN_REPOST_DAY = df_reposts.select(pl.col('created_at')).min().item()
-    print(MIN_REPOST_DAY)
-    
-    data_final = [] # will be used to create dataframe of DiD data.
+    ab_followers_following = set() # followers of the attention broker who followed a reposted account at least once
+    non_followers_following = set() # accounts not following the attention broker who followed a reposted account at least once
     for ix, row in enumerate(df_reposts.iter_rows(named=True)):
         # this looks weird, but it means I can do polars dataframe math with repost_created_at
-        repost_created_at = pl.DataFrame({'created_at': [row['created_at']]})
-        repost_period = (repost_created_at.item() - MIN_REPOST_DAY).days # relative date of repost
+        repost_created_at = pl.DataFrame({'created_at': [row['created_at']]}) 
         
         orig_poster = row['orig_poster'] # referred to as OP (original poster) in these comments
         low_follow_bound = row['created_at'] - dt.timedelta(days=days_bwd) # the minimum day we will collect following data for
@@ -113,7 +106,6 @@ def make_did_csv(HANDLE, df_follows, days_fwd, days_bwd):
             (pl.col('created_at') >= low_follow_bound) & \
             (pl.col('to') == orig_poster)
         )
-        # populate with a column for when the repost was created
         follows_to_op = follows_to_op.with_columns(
             pl.lit(repost_created_at.item(), dtype=Datetime).alias('repost_created_at')
         )
@@ -126,7 +118,7 @@ def make_did_csv(HANDLE, df_follows, days_fwd, days_bwd):
             suffix='_from_ab'
         )
         # created_at_from_ab is the time the follower --> attention broker tie formed
-        # created_at is the time the follower --> reposted acct tie formed
+        # created_at is the time the follower --> OP tie formed
     
         # first, figure out when the follower --> reposted tie happened relative to the repost
         # pl.col('whatever1').sub(pl.col('whatever2')) subtracts the values in whatever2 from the values in whatever1.
@@ -134,59 +126,28 @@ def make_did_csv(HANDLE, df_follows, days_fwd, days_bwd):
             ((pl.col('repost_created_at').sub(pl.col('created_at'))).dt.total_days()).alias('days_before_after_repost'),
             (pl.col('created_at_from_ab').fill_null(repost_created_at.item()))
         )
-        # obtain all follow events prior to repost
-        followers_before_repost = follows_to_op_following_ab.filter(
-            pl.col('days_before_after_repost') < 0
+        # next, figure out who is a follower of the attention broker (i.e. in the treatment group)
+        follows_to_op_following_ab = follows_to_op_following_ab.with_columns(
+            pl.when(pl.col('days_before_after_repost') >= 0).then(
+                pl.col('created_at').sub(pl.col('created_at_from_ab')).dt.total_seconds() > 0
+            ).otherwise(
+                pl.col('repost_created_at').sub(pl.col('created_at_from_ab')).dt.total_seconds() > 0).alias('ab_follower')
         )
-        # obtain all follow events after repost
-        followers_after_repost = follows_to_op_following_ab.filter(
-            pl.col('days_before_after_repost') >= 0
-        )
+        # keep track of who is an attention broker follower and who is not; add to the sets of known individuals.
+        ab_followers_following = ab_followers_following | \
+            set(follows_to_op_following_ab.filter(pl.col('ab_follower') == True)['from'].to_numpy().tolist())
+        non_followers_following = non_followers_following | \
+            set(follows_to_op_following_ab.filter(pl.col('ab_follower') == False)['from'].to_numpy().tolist())
 
-        # figure out who is a follower of the attention broker and was therefore "treated" at the time they followed OP
-        followers_before_repost = followers_before_repost.with_columns(
-            ((pl.col('created_at').sub(pl.col('created_at_from_ab'))).dt.total_seconds() > 0).alias('ab_follower')
-        )
-        followers_after_repost = followers_after_repost.with_columns(
-            ((pl.col('repost_created_at').sub(pl.col('created_at_from_ab'))).dt.total_seconds() > 0).alias('ab_follower')
-        )
+    # count unique followers and non-followers seen in the dataset.
+    res = {'ab_followers': len(ab_followers_following), 'non_followers': len(non_followers_following)}
+    # jump to JSON file
+    json.dump(res, open(f'{FILEPATH}/population_counts/{HANDLE}_fwd_{days_fwd}_bwd_{days_bwd}.json', 'w'))
 
-        # obtain per-day total follow counts
-        followers_before_repost = followers_before_repost.group_by(
-            [pl.col('days_before_after_repost'), pl.col('ab_follower')]).agg(pl.col('from').count())
-        followers_after_repost = followers_after_repost.group_by(
-            [pl.col('days_before_after_repost'), pl.col('ab_follower')]).agg(pl.col('from').count())
-
-        # add to dataset
-        for row in followers_before_repost.iter_rows(named=True):
-            data_final.append({
-                'gain_rate': row['from'],
-                'ever_treated': row['ab_follower'],
-                'unit_id': ix,
-                'time_period': repost_period + row['days_before_after_repost'],
-                'ts': row['days_before_after_repost'],
-            })
-    
-        for row in followers_after_repost.iter_rows(named=True):
-            data_final.append({
-                'gain_rate': row['from'],
-                'ever_treated': row['ab_follower'],
-                'unit_id': ix,
-                'time_period': repost_period + row['days_before_after_repost'],
-                'ts': row['days_before_after_repost'],
-            })
-            
-    # build dataframe from list of dicts
-    data = pl.DataFrame(data_final)    
-    fwd_str = str(DAYS_FWD)
-    bwd_str = str(DAYS_BWD)
-    data.write_csv(f'{FILEPATH}/did_csvs/{HANDLE}_fwd_{DAYS_FWD}_bwd_{DAYS_BWD}.csv')
-    print('done')
-
-make_did_csv(AB_HANDLE, df_follows, DAYS_FWD, DAYS_BWD)
-# DID_FILES = os.listdir(f'{FILEPATH}/did_csvs')
-# PROCESSED_HANDLES = set([d[:-4] for d in DID_FILES])
+# MARK_FILES = os.listdir(f'{FILEPATH}/mark_data')
+# PROCESSED_HANDLES = set([d.split('_non_followers.txt')[0] for d in MARK_FILES])
+# # currently we've written the capture history for Jorts only.
 # for handle in list(AB_DIDS.keys()):
 #     print(handle)
 #     if handle not in PROCESSED_HANDLES:
-#         make_did_csv(handle, df_follows)
+count_populations(HANDLE, df_follows, DAYS_FWD, DAYS_BWD)

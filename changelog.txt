@@ -117,4 +117,16 @@ for Aaron Rupar and Jamelle Bouie in the repo. I also have either raw or per-cap
 follow trend plots for all accounts for whom I have a raw follow rate file on the 
 UVA HPC cluster. 
 
+20260214 10am:
+Adding functionality to the parsing, interpolation, and population counting scripts
+that allows me to set arbitrary look-forward and look-back relative to the repost time.
+I think if I want to establish parallel pre-trends for DiD, I need to look farther back 
+relative to the repost events. I've modified parse_reposts_and_extract_follow_timings.py and 
+interpolate_missing_did_data.py, and also added count_follower_non_follower_populations.py,
+all of which take as command line arguments a handle and # of days to look forward & back. 
+I'm rerunning the CSV creation script with a 30-day lookforward and lookback for Aaron Rupar,
+Jamelle Bouie, Taylor Lorenz, Swift on Security, and Patton Oswalt. The new script I added,
+count_follower_non_follower_populations.py, just counts the number of unique attention
+broker followers and non-followers we see following a reposted account at any point in the data.
+
 
