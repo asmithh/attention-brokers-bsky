@@ -16,16 +16,21 @@ Used to count all followers and non-followers who followed at least one account 
 outputs a JSON file with keys 'ab_followers' and 'non_followers' corresponding to the number of unique
 attention broker followers and unique non-followers observed in the dataset.
 
-Run as python3 count_follower_non_follower_populations.py $HANDLE $DAYS_FWD $DAYS_BWD
-HANDLE is the Bluesky handle of the attention broker
+Run as python3 count_follower_non_follower_populations.py $HANDLE_INF $DAYS_FWD $DAYS_BWD
+HANDLE_INF is the .txt file of Bluesky handles of attention brokers
 DAYS_FWD is the number of days for which we have data after the repost
 DAYS_BWD is the number of days for which we have data before the repost
 """
 
-HANDLE = sys.argv[1]
+HANDLE_INF = sys.argv[1]
 DAYS_FWD = int(sys.argv[2])
 DAYS_BWD = int(sys.argv[3])
 
+HANDLES = []
+with open(HANDLE_INF, 'r') as f:
+    for line in f.readlines():
+        HANDLES.append(line.strip())
+        
 FILEPATH = '/scratch/nte5cp' # change this for your machine
 AB_DIDS = json.load(open(f'{FILEPATH}/handles_to_dids.json', 'r'))
 
@@ -144,10 +149,7 @@ def count_populations(HANDLE, df_follows, days_fwd, days_bwd):
     # jump to JSON file
     json.dump(res, open(f'{FILEPATH}/population_counts/{HANDLE}_fwd_{days_fwd}_bwd_{days_bwd}.json', 'w'))
 
-# MARK_FILES = os.listdir(f'{FILEPATH}/mark_data')
-# PROCESSED_HANDLES = set([d.split('_non_followers.txt')[0] for d in MARK_FILES])
-# # currently we've written the capture history for Jorts only.
-# for handle in list(AB_DIDS.keys()):
-#     print(handle)
-#     if handle not in PROCESSED_HANDLES:
-count_populations(HANDLE, df_follows, DAYS_FWD, DAYS_BWD)
+# currently we've written the capture history for Jorts only.
+for handle in HANDLES:
+    print(handle)
+    count_populations(handle, df_follows, DAYS_FWD, DAYS_BWD)

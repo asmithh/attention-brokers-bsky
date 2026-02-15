@@ -129,4 +129,10 @@ Jamelle Bouie, Taylor Lorenz, Swift on Security, and Patton Oswalt. The new scri
 count_follower_non_follower_populations.py, just counts the number of unique attention
 broker followers and non-followers we see following a reposted account at any point in the data.
 
+20260215 4pm:
+Realized that I was subtracting the time a follower followed a reposted account *from* the time
+the account was reposted, so the plots are exactly backwards. I am reasonably sure the backwards
+versions of the plots are what I will see, but I'm rerunning the CSV generation and population
+computation because there's a discontinuity in how I determine who's following the attention 
+broker on day 0 itself. 
 

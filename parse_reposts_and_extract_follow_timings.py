@@ -20,13 +20,17 @@ Makes CSVs with the following columns:
 
 Some combinations of [ever-treated, unit_id, and ts] will be missing; we handle these with a separate script.
 
-Run as python3 parse_reposts_and_extract_follow_timings.py $AB_HANDLE $DAYS_FWD $DAYS_BWD
-AB_HANDLE is the Bluesky handle of the attention broker
+Run as python3 parse_reposts_and_extract_follow_timings.py inf.txt $DAYS_FWD $DAYS_BWD
+inf.txt is a text file with one Bluesky handle of an attention broker per line
 DAYS_FWD is the number of days for which we want data after the repost
 DAYS_BWD is the number of days for which we want data before the repost
 """
 
-AB_HANDLE = sys.argv[1]
+AB_HANDLES = []
+with open(sys.argv[1], 'r') as f:
+    for line in f.readlines():
+        AB_HANDLES.append(line.strip())
+        
 DAYS_FWD = int(sys.argv[2])
 DAYS_BWD = int(sys.argv[3])
 
@@ -131,7 +135,7 @@ def make_did_csv(HANDLE, df_follows, days_fwd, days_bwd):
         # first, figure out when the follower --> reposted tie happened relative to the repost
         # pl.col('whatever1').sub(pl.col('whatever2')) subtracts the values in whatever2 from the values in whatever1.
         follows_to_op_following_ab = follows_to_op_following_ab.with_columns(
-            ((pl.col('repost_created_at').sub(pl.col('created_at'))).dt.total_days()).alias('days_before_after_repost'),
+            ((pl.col('created_at').sub(pl.col('repost_created_at'))).dt.total_days()).alias('days_before_after_repost'),
             (pl.col('created_at_from_ab').fill_null(repost_created_at.item()))
         )
         # obtain all follow events prior to repost
@@ -183,7 +187,8 @@ def make_did_csv(HANDLE, df_follows, days_fwd, days_bwd):
     data.write_csv(f'{FILEPATH}/did_csvs/{HANDLE}_fwd_{DAYS_FWD}_bwd_{DAYS_BWD}.csv')
     print('done')
 
-make_did_csv(AB_HANDLE, df_follows, DAYS_FWD, DAYS_BWD)
+for AB_HANDLE in AB_HANDLES:
+    make_did_csv(AB_HANDLE, df_follows, DAYS_FWD, DAYS_BWD)
 # DID_FILES = os.listdir(f'{FILEPATH}/did_csvs')
 # PROCESSED_HANDLES = set([d[:-4] for d in DID_FILES])
 # for handle in list(AB_DIDS.keys()):
