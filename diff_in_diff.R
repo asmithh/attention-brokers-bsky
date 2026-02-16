@@ -22,14 +22,14 @@ data = fread(
   colClasses=cls
 )
 
-simple_fol = feols(gain_rate_fol ~ post.treat | unit_id + period, data=data)
-simple_non = feols(gain_rate_non ~ post.treat | unit_id + period, data=data)
+# simple_fol = feols(gain_rate_fol ~ post.treat | unit_id + period, data=data)
+# simple_non = feols(gain_rate_non ~ post.treat | unit_id + period, data=data)
 
 
-twfe_fol = feols(gain_rate_fol ~ i(ts, ref=-29)  | 
+twfe_fol = feols(gain_rate_fol ~ i(ts, ref=-13)  | 
                unit_id, cluster=~unit_id, data=data)
 
-twfe_non = feols(gain_rate_non ~ i(ts, ref=-29)  | 
+twfe_non = feols(gain_rate_non ~ i(ts, ref=-13)  | 
                unit_id, cluster=~unit_id, data=data)
 iplot(
   list(twfe_fol, twfe_non), 
@@ -48,11 +48,11 @@ get_coefs <- function(twfe, ix) {
 }
 
 compare_day_zero_coefs <- function(twfe0, twfe1){
-  coefs0 <- get_coefs(twfe0, 30)
+  coefs0 <- get_coefs(twfe0, 15)
   estimate0 <- coefs0[1]
   se0 <- coefs0[2]
   
-  coefs1 <- get_coefs(twfe1, 30)
+  coefs1 <- get_coefs(twfe1, 15)
   estimate1 <- coefs1[1]
   se1 <- coefs1[2]
   
