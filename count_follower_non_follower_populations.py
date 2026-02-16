@@ -133,7 +133,7 @@ def count_populations(HANDLE, df_follows, days_fwd, days_bwd):
         )
         # next, figure out who is a follower of the attention broker (i.e. in the treatment group)
         follows_to_op_following_ab = follows_to_op_following_ab.with_columns(
-            pl.when(pl.col('days_before_after_repost') >= 0).then(
+            pl.when(pl.col('days_before_after_repost') < 0).then(
                 pl.col('created_at').sub(pl.col('created_at_from_ab')).dt.total_seconds() > 0
             ).otherwise(
                 pl.col('repost_created_at').sub(pl.col('created_at_from_ab')).dt.total_seconds() > 0).alias('ab_follower')
