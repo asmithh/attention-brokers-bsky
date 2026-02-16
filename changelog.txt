@@ -136,3 +136,24 @@ versions of the plots are what I will see, but I'm rerunning the CSV generation 
 computation because there's a discontinuity in how I determine who's following the attention 
 broker on day 0 itself. 
 
+20260216 10am:
+Realized that the code for counting follower and non-follower populations was
+incorrectly assigning followers to the attention broker that should be
+non-followers because I had done the conditional assignment of ab_follower
+such that accounts who had followed the reposted account post-repost would be
+assigned as followers if the date at which they followed the reposted account
+was greater than the day of the repost (which of course it would be). I have
+corrected this, and now accounts that followed the reposted account *before*
+the repost are assigned as followers if they followed the reposted account
+*after* having followed the attention broker. Accounts that followed the
+reposted account *after* the repost are assigned as followers if they followed
+the attention broker before they followed the reposted account. This bug was
+not replicated in the parsing code that makes the DiD CSVs because I treated
+the followers and non-followers separately and did not introduce any incorrect
+conditionals. Nonetheless, I'm also setting the null values for the
+created_at_from_ab column (i.e. when the attention broker was followed) equal
+to the day of the repost + 365 * 5 days. This ensures, beyond the specter of a
+doubt, that people who never followed the attention broker will not be
+assigned as followers because of some zero overflow/underflow error with
+subtraction in polars. Not saying it won't happen for some other reason, but
+at least we're covering that base. 
