@@ -5,6 +5,7 @@ library(dplyr)    # alternatively, this also loads %>%
 library(ggplot2)
 library(glue)
 library(dotwhisker)
+library(ggfixest)
 
 cls = c(
   period = "numeric",
@@ -35,7 +36,8 @@ twfe_non = feols(gain_rate_non ~ i(ts, ref=-13)  |
 ggiplot(
   list("Followers"=twfe_fol, "Non-Followers"=twfe_non), 
   main=glue("{acct}: \n Effect of Retweet on Follow Rate"), 
-  col=c("red", "steelblue")
+  col=c("red", "steelblue"),
+  xlab="Time Relative to Repost"
 ) +
   theme(plot.title = element_text(hjust = 0.5))
 
@@ -61,10 +63,10 @@ pnorm(compare_coefs(twfe_fol, twfe_non, 14))
 pnorm(compare_coefs(simple_fol, simple_non, 1))
 dwplot(
   list("Followers" = simple_fol, "Non-Followers" = simple_non),
-)  %>%
-  relabel_predictors(post.treatTrue="Effect of Repost") +
+)  +
   scale_color_manual(
     values=c("Followers" = "red", "Non-Followers" = "steelblue"))  +
   ggtitle(glue("{acct}: \n DiD Comparison for Followers and Non-Followers")) +
   xlim(0, 8e-04) +
-  theme(plot.title = element_text(hjust = 0.5))
+  theme(plot.title = element_text(hjust = 0.5)) +
+  xlab("Effect Size")
