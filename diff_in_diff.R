@@ -69,4 +69,5 @@ dwplot(
   ggtitle(glue("{acct}: \n DiD Comparison for Followers and Non-Followers")) +
   xlim(0, 8e-04) +
   theme(plot.title = element_text(hjust = 0.5)) +
-  xlab("Effect Size")
+  xlab("Effect Size") + 
+  coord_flip()
