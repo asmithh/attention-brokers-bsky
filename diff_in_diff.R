@@ -3,6 +3,7 @@ library(HonestDiD)
 library(data.table)
 library(dplyr)    # alternatively, this also loads %>%
 library(ggplot2)
+library(glue)
 
 cls = c(
   period = "numeric",
@@ -13,8 +14,11 @@ cls = c(
   ts = "numeric"
 )
 
+acct = 'taylorlorenz.bsky.social'
+fpath = '~/attention-brokers-bsky/processed_did_csvs'
+fname = glue('{fpath}/{acct}_processed_did_data.csv')
 data = fread(
-  '~/attention-brokers-bsky/processed_did_csvs/jamellebouie.net_processed_did_data.csv', 
+  fname,
   colClasses=cls
 )
 
@@ -22,13 +26,37 @@ simple_fol = feols(gain_rate_fol ~ post.treat | unit_id + period, data=data)
 simple_non = feols(gain_rate_non ~ post.treat | unit_id + period, data=data)
 
 
-twfe_fol = feols(gain_rate_fol ~ i(ts, ref=-13)  | 
+twfe_fol = feols(gain_rate_fol ~ i(ts, ref=-29)  | 
                unit_id, cluster=~unit_id, data=data)
 
-twfe_non = feols(gain_rate_non ~ i(ts, ref=-13)  | 
+twfe_non = feols(gain_rate_non ~ i(ts, ref=-29)  | 
                unit_id, cluster=~unit_id, data=data)
 iplot(
   list(twfe_fol, twfe_non), 
-  main="jamellebouie.net: Effect of Retweet on Follow Rate", 
+  main=glue("{acct}: Effect of Retweet on Follow Rate"), 
   col=c("red", "steelblue")
 )
+
+get_coefs <- function(twfe, ix) {
+
+
+
+  orig_estimate <- unlist(twfe$coefficients[ix])
+  orig_se <- unlist(twfe$se[ix])
+
+  return(c(as.numeric(orig_estimate), as.numeric(orig_se)))
+}
+
+compare_day_zero_coefs <- function(twfe0, twfe1){
+  coefs0 <- get_coefs(twfe0, 30)
+  estimate0 <- coefs0[1]
+  se0 <- coefs0[2]
+  
+  coefs1 <- get_coefs(twfe1, 30)
+  estimate1 <- coefs1[1]
+  se1 <- coefs1[2]
+  
+  return((estimate1 - estimate0) / (sqrt(se0^2 + se1 ^ 2)))
+  
+}
+pnorm(compare_day_zero_coefs(twfe_fol, twfe_non))
