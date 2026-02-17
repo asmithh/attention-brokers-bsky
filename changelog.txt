@@ -157,3 +157,13 @@ doubt, that people who never followed the attention broker will not be
 assigned as followers because of some zero overflow/underflow error with
 subtraction in polars. Not saying it won't happen for some other reason, but
 at least we're covering that base. 
+
+20260217 9am:
+There's been an issue where the following counts on day -14 are always zero, 
+so I'm starting the count in the plots and DiD analyses at day -13. I don't
+think I have time to debug the code and rerun the data pulls, given that that
+took almost 48 hours and is still ongoing. I've also matched colors in the plotting
+code in R and in Python, fixed the labeling in the R plots, and figured out
+how to make LaTeX tables for the regressions in R. So far we have 9/12 accounts
+analyzed, and I've queued population estimation jobs for the other 3. Ken White
+will probably take a long time because he has so many reposts. 
