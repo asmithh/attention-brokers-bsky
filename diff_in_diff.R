@@ -6,6 +6,9 @@ library(ggplot2)
 library(glue)
 library(dotwhisker)
 library(ggfixest)
+library(kableExtra)
+library(modelsummary)
+
 
 cls = c(
   period = "numeric",
@@ -16,7 +19,7 @@ cls = c(
   ts = "numeric"
 )
 
-acct = 'flavorflav.bsky.social'
+acct = 'anneapplebaum.bsky.social'
 fpath = '~/attention-brokers-bsky/processed_did_csvs'
 fname = glue('{fpath}/{acct}_processed_did_data.csv')
 data = fread(
@@ -35,7 +38,7 @@ twfe_non = feols(gain_rate_non ~ i(ts, ref=-13)  |
                unit_id, cluster=~unit_id, data=data)
 ggiplot(
   list("Followers"=twfe_fol, "Non-Followers"=twfe_non), 
-  main=glue("{acct}: \n Effect of Retweet on Follow Rate"), 
+  main=glue("{acct}: \n Effect of Repost on Follow Rate"), 
   col=c("red", "steelblue"),
   xlab="Time Relative to Repost"
 ) +
@@ -59,7 +62,9 @@ compare_coefs <- function(twfe0, twfe1, ix){
   return((estimate1 - estimate0) / (sqrt(se0^2 + se1 ^ 2)))
   
 }
-pnorm(compare_coefs(twfe_fol, twfe_non, 14))
+compare_coefs(twfe_fol, twfe_non, 13)
+pnorm(compare_coefs(twfe_fol, twfe_non, 13))
+compare_coefs(simple_fol, simple_non, 1)
 pnorm(compare_coefs(simple_fol, simple_non, 1))
 dwplot(
   list("Followers" = simple_fol, "Non-Followers" = simple_non),
@@ -67,7 +72,15 @@ dwplot(
   scale_color_manual(
     values=c("Followers" = "red", "Non-Followers" = "steelblue"))  +
   ggtitle(glue("{acct}: \n DiD Comparison for Followers and Non-Followers")) +
-  xlim(0, 8e-04) +
+  xlim(0, 15e-04) +
   theme(plot.title = element_text(hjust = 0.5)) +
   xlab("Effect Size") + 
   coord_flip()
+
+msummary(
+  simple_fol,
+  signif.stars = getOption("show.signif.stars"),
+  fmt = fmt_significant(3),
+  shape=term ~ model + statistic,
+  statistic = c( "statistic", "std.error", "p.value", "conf.low", "conf.high"),
+  output="latex")
