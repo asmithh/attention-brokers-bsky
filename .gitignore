@@ -2,8 +2,7 @@ handles_to_dids.json
 .DS_Store
 bsky_reposts/*.json
 .ipynb_checkpoints/*
+deprecated_data_files/*
 __pycache__/*
-*.csv
 mark_data/*
-interpolated_did_csvs/*
 processed_did_csvs/*

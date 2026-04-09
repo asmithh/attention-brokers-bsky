@@ -167,3 +167,12 @@ code in R and in Python, fixed the labeling in the R plots, and figured out
 how to make LaTeX tables for the regressions in R. So far we have 9/12 accounts
 analyzed, and I've queued population estimation jobs for the other 3. Ken White
 will probably take a long time because he has so many reposts. 
+
+20260219 12pm:
+Moved incorrect/deprecated code and data files to a deprecated_code/ and
+deprecated_data_files/ respectively. This made it possible for me to clean up 
+the file path logic in plots.ipynb. I also updated the README.md to account for
+the changes to file paths, explain how to run this analysis from scratch, and
+indicate the purposes of the remaining code files. I added the interpolated DID
+CSVs for each attention broker account to the GitHub repo and made sure all the
+plots and population counts were also present. 

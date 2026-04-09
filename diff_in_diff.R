@@ -19,7 +19,7 @@ cls = c(
   ts = "numeric"
 )
 
-acct = 'anneapplebaum.bsky.social'
+acct = 'swiftonsecurity.com'
 fpath = '~/attention-brokers-bsky/processed_did_csvs'
 fname = glue('{fpath}/{acct}_processed_did_data.csv')
 data = fread(
@@ -72,14 +72,14 @@ dwplot(
   scale_color_manual(
     values=c("Followers" = "red", "Non-Followers" = "steelblue"))  +
   ggtitle(glue("{acct}: \n DiD Comparison for Followers and Non-Followers")) +
-  xlim(0, 15e-04) +
+  xlim(0, 1.5e-04) +
   theme(plot.title = element_text(hjust = 0.5)) +
   xlab("Effect Size") + 
   coord_flip()
 
 msummary(
   simple_fol,
-  signif.stars = getOption("show.signif.stars"),
+  signif.stars = TRUE,
   fmt = fmt_significant(3),
   shape=term ~ model + statistic,
   statistic = c( "statistic", "std.error", "p.value", "conf.low", "conf.high"),
