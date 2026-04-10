@@ -19,23 +19,34 @@ cls = c(
   ts = "numeric"
 )
 
-acct = 'swiftonsecurity.com'
-fpath = '~/attention-brokers-bsky/processed_did_csvs'
-fname = glue('{fpath}/{acct}_processed_did_data.csv')
-data = fread(
-  fname,
+acct = 'atrupar.com'
+fpath_did = '~/attention-brokers-bsky/processed_did_csvs'
+fname_did = glue('{fpath}/{acct}_processed_did_data.csv')
+data_did = fread(
+  fname_did,
   colClasses=cls
 )
+data_did$treat = 1
+fpath_con = '~/attention-brokers-bsky/processed_control_csvs'
+fname_con = glue('{fpath}/{acct}_processed_did_data.csv')
+data_con = fread(
+  fname_con,
+  colClasses=cls
+)
+data_con$treat = 0
+dat_list = list(data_did, data_con)
+data = rbindlist(dat_list)
 
 simple_fol = feols(gain_rate_fol ~ post.treat | unit_id + period, data=data)
 simple_non = feols(gain_rate_non ~ post.treat | unit_id + period, data=data)
 
 
-twfe_fol = feols(gain_rate_fol ~ i(ts, ref=-13)  | 
-               unit_id, cluster=~unit_id, data=data)
+twfe_fol = feols(gain_rate_fol ~ i(ts, treat, ref=-13)  | 
+               unit_id + period, cluster=~unit_id, data=data)
 
-twfe_non = feols(gain_rate_non ~ i(ts, ref=-13)  | 
-               unit_id, cluster=~unit_id, data=data)
+twfe_non = feols(gain_rate_non ~ i(ts, treat, ref=-13)  | 
+               unit_id + period, cluster=~unit_id, data=data)
+
 ggiplot(
   list("Followers"=twfe_fol, "Non-Followers"=twfe_non), 
   main=glue("{acct}: \n Effect of Repost on Follow Rate"), 
