@@ -176,3 +176,25 @@ the changes to file paths, explain how to run this analysis from scratch, and
 indicate the purposes of the remaining code files. I added the interpolated DID
 CSVs for each attention broker account to the GitHub repo and made sure all the
 plots and population counts were also present. 
+
+20260410 11am:
+Incorporated data collection for control accounts -- for each reposted account, 
+we randomly select three accounts that are followed by the attention broker and 
+had not yet been reposted in the time period around the repost that we're 
+measuring following rates for. This should remove the collinearity issue that
+arises when we add in the temporal fixed effect in the event study, and indeed
+it appears that it does. The control data collection code lives in 
+get_non_treated_units_per_repost.py. 
+
+However, when I plotted the control account data, I saw a spike at t=0 that 
+didn't make sense. When I looked at the code, I realized that using total_days 
+to measure the temporal difference between the repost event and the follow event
+was a mistake: 0 total days could mean 0 days - 12 hours or 0 days + 12 hours, 
+for example. I've changed the days_before_after_repost calculation to go by 
+number of hours elapsed floor divided by 24. This gives correct results -- so a 
+-15 hour difference is encoded as -1, 2 hours is encoded as 0, 30 hours is 
+encoded as 1, and so on. 
+
+I'm currently rerunning the regular data collection and the control data 
+collections. I'm hoping to confirm that the spike in the control data goes away
+with this intervention as a major sanity check. Then I'll rerun the regressions.

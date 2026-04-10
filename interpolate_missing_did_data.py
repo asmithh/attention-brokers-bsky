@@ -18,10 +18,18 @@ DAYS_BWD is the number of days for which we have data before the repost
 HANDLE = sys.argv[1]
 DAYS_FWD = int(sys.argv[2])
 DAYS_BWD = int(sys.argv[3])
+FTYPE = sys.argv[4]
 
-FILEPATH = '/scratch/nte5cp' # change this for your machine
+if FTYPE == 'did':
+    ORIG_CSV_DIR = 'did_csvs'
+    OUT_CSV_DIR = 'interpolated_did_csvs'
+elif FTYPE == 'control':
+    ORIG_CSV_DIR = 'control_csvs'
+    OUT_CSV_DIR = 'interpolated_control_csvs'
 
-df = pd.read_csv(f'{FILEPATH}/did_csvs/{HANDLE}_fwd_{DAYS_FWD}_bwd_{DAYS_BWD}.csv')
+FILEPATH = '/home/nte5cp' # change this for your machine
+
+df = pd.read_csv(f'{FILEPATH}/{ORIG_CSV_DIR}/{HANDLE}_fwd_{DAYS_FWD}_bwd_{DAYS_BWD}.csv')
 
 # Building a MultiIndex to fill in NaNs for missing data.
 # These are the combinations of values we should have, but some combinations will be missing.
@@ -93,4 +101,4 @@ def complete_interpolation_for_unit(gr):
 time_period_by_unit = df.groupby('unit_id').apply(complete_interpolation_for_unit).explode() # flatten list of lists
 df['time_period'] = time_period_by_unit.to_list() # add interpolated time_period column
 
-df.to_csv(f'{FILEPATH}/interpolated_did_csvs/{HANDLE}_fwd_{DAYS_FWD}_bwd_{DAYS_BWD}.csv')
+df.to_csv(f'{FILEPATH}/{OUT_CSV_DIR}/{HANDLE}_fwd_{DAYS_FWD}_bwd_{DAYS_BWD}.csv')

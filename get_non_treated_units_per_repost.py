@@ -37,12 +37,13 @@ DAYS_BWD = int(sys.argv[3])
 FILEPATH = '/scratch/nte5cp' # change this for your machine
 AB_DIDS = json.load(open(f'{FILEPATH}/handles_to_dids.json', 'r'))
 
+FILEPATH_OUT = '/home/nte5cp'
 # set conservative upper bound on repost events we'll study.
 REPOST_CUTOFF = dt.datetime(year=2025, month=9, day=15, tzinfo=ZoneInfo("UTC"))
 
 # this takes a long time to load because it's 220 GB of data.
 df_follows = pl.read_csv(
-    f'{FILEPATH}/follows_sample.csv', 
+    f'{FILEPATH}/follows_all.csv', 
     has_header=False, 
     new_columns=["from", "to", "created_at"],
 )
@@ -64,7 +65,7 @@ df_follows = df_follows.with_columns(
     ))
 )
 
-def make_did_csv(HANDLE, df_follows, days_fwd, days_bwd):
+def make_control_csv(HANDLE, df_follows, days_fwd, days_bwd, n_controls=3):
     """
     Make CSV of data for use with difference-in-differences. Columns are explained at the top of the file.
 
@@ -117,12 +118,13 @@ def make_did_csv(HANDLE, df_follows, days_fwd, days_bwd):
         ops_reposted_before_this_repost = df_reposts.filter(
             pl.col('created_at') <= high_follow_bound
         )
-        followed_to_sample_from = followed_by_ab.filter(
-            ~ops_reposted_before_this_repost.orig_poster.is_in(
-                followed_ab.to
-            )
+        followed_to_sample_from = followed_by_ab.join(
+            ops_reposted_before_this_repost,
+            left_on='to',
+            right_on='orig_poster',
+            how='anti',
         )
-        followed_sample = followed_to_sample_from.sample(n=3, seed=42)
+        followed_sample = followed_to_sample_from.sample(n=n_controls, seed=42)
 
         for en, sample in enumerate(followed_sample.iter_rows(named=True)):
             # get all the follows to OP that could've happened in the time we observed
@@ -137,7 +139,7 @@ def make_did_csv(HANDLE, df_follows, days_fwd, days_bwd):
             )
             # join with attention broker follow information; a non-empty value V in created_at_from_ab 
             # indicates that an account that we know followed OP also followed the attention broker at time V.
-            follows_to_control_following_ab = follows_to_op.join(
+            follows_to_control_following_ab = follows_to_control.join(
                 followers_of_ab, 
                 on='from', 
                 how='left',
@@ -149,7 +151,7 @@ def make_did_csv(HANDLE, df_follows, days_fwd, days_bwd):
             # first, figure out when the follower --> reposted tie happened relative to the repost
             # pl.col('whatever1').sub(pl.col('whatever2')) subtracts the values in whatever2 from the values in whatever1.
             follows_to_control_following_ab = follows_to_control_following_ab.with_columns(
-                ((pl.col('created_at').sub(pl.col('repost_created_at'))).dt.total_days()).alias('days_before_after_repost'),
+                ((pl.col('created_at').sub(pl.col('repost_created_at'))).dt.total_hours().floordiv(24)).alias('days_before_after_repost'),
                 (pl.col('created_at_from_ab').fill_null(repost_created_at.item() + dt.timedelta(days=5 * 365))),
             )
             # obtain all follow events prior to repost
@@ -180,7 +182,7 @@ def make_did_csv(HANDLE, df_follows, days_fwd, days_bwd):
                 data_final.append({
                     'gain_rate': row['from'],
                     'ever_treated': row['ab_follower'],
-                    'unit_id': tot_reposts + en + (ix * N_CONTROLS),
+                    'unit_id': tot_reposts + en + (ix * n_controls),
                     'time_period': repost_period + row['days_before_after_repost'],
                     'ts': row['days_before_after_repost'],
                 })
@@ -189,7 +191,7 @@ def make_did_csv(HANDLE, df_follows, days_fwd, days_bwd):
                 data_final.append({
                     'gain_rate': row['from'],
                     'ever_treated': row['ab_follower'],
-                    'unit_id': tot_reposts + en + (ix * N_CONTROLS),
+                    'unit_id': tot_reposts + en + (ix * n_controls),
                     'time_period': repost_period + row['days_before_after_repost'],
                     'ts': row['days_before_after_repost'],
                 })
@@ -198,11 +200,11 @@ def make_did_csv(HANDLE, df_follows, days_fwd, days_bwd):
     data = pl.DataFrame(data_final)    
     fwd_str = str(DAYS_FWD)
     bwd_str = str(DAYS_BWD)
-    data.write_csv(f'{FILEPATH}/control_csvs/{HANDLE}_fwd_{DAYS_FWD}_bwd_{DAYS_BWD}.csv')
+    data.write_csv(f'{FILEPATH_OUT}/control_csvs/{HANDLE}_fwd_{DAYS_FWD}_bwd_{DAYS_BWD}.csv')
     print('done')
 
 for AB_HANDLE in AB_HANDLES:
-    make_did_csv(AB_HANDLE, df_follows, DAYS_FWD, DAYS_BWD)
+    make_control_csv(AB_HANDLE, df_follows, DAYS_FWD, DAYS_BWD)
 # DID_FILES = os.listdir(f'{FILEPATH}/did_csvs')
 # PROCESSED_HANDLES = set([d[:-4] for d in DID_FILES])
 # for handle in list(AB_DIDS.keys()):
