@@ -20,7 +20,7 @@ cls = c(
   year_treated = "numeric"
 )
 
-acct = 'jamellebouie.net'
+acct = 'karaswisher.bsky.social'
 json_data <- read_json(glue(
   "~/attention-brokers-bsky/population_counts/{acct}_fwd_14_bwd_14.json"))
 pop_fol = json_data$ab_followers
