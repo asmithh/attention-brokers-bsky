@@ -8,32 +8,39 @@ library(dotwhisker)
 library(ggfixest)
 library(kableExtra)
 library(modelsummary)
-
-
+library(jsonlite)
+library(broom)
 cls = c(
   period = "numeric",
   post.treat = "factor",
   unit_id = "factor",
   gain_rate_fol = "numeric",
   gain_rate_non = "numeric",
-  ts = "numeric"
+  ts = "numeric",
+  year_treated = "numeric"
 )
 
-acct = 'atrupar.com'
+acct = 'jamellebouie.net'
+json_data <- read_json(glue(
+  "~/attention-brokers-bsky/population_counts/{acct}_fwd_14_bwd_14.json"))
+pop_fol = json_data$ab_followers
+pop_non = json_data$non_followers
 fpath_did = '~/attention-brokers-bsky/processed_did_csvs'
-fname_did = glue('{fpath}/{acct}_processed_did_data.csv')
+fname_did = glue('{fpath_did}/{acct}_processed_did_data.csv')
 data_did = fread(
   fname_did,
   colClasses=cls
 )
 data_did$treat = 1
+
 fpath_con = '~/attention-brokers-bsky/processed_control_csvs'
-fname_con = glue('{fpath}/{acct}_processed_did_data.csv')
+fname_con = glue('{fpath_con}/{acct}_processed_did_data.csv')
 data_con = fread(
   fname_con,
   colClasses=cls
 )
 data_con$treat = 0
+
 dat_list = list(data_did, data_con)
 data = rbindlist(dat_list)
 
@@ -41,17 +48,35 @@ simple_fol = feols(gain_rate_fol ~ post.treat | unit_id + period, data=data)
 simple_non = feols(gain_rate_non ~ post.treat | unit_id + period, data=data)
 
 
-twfe_fol = feols(gain_rate_fol ~ i(ts, treat, ref=-13)  | 
+twfe_fol = feols(gain_rate_fol ~ i(ts, treat, ref=-14)  | 
                unit_id + period, cluster=~unit_id, data=data)
 
-twfe_non = feols(gain_rate_non ~ i(ts, treat, ref=-13)  | 
+twfe_non = feols(gain_rate_non ~ i(ts, treat, ref=-14)   | 
                unit_id + period, cluster=~unit_id, data=data)
+
+ggiplot(
+  twfe_fol, 
+  main=glue("{acct}: \n Effect of Repost on Followers' Follow Rate"), 
+  col="red",
+  xlab="Time Relative to Repost",
+  ylim = c(-0.0005 * pop_fol, 0.001 * pop_fol)
+)
+
+ggiplot(
+  twfe_non, 
+  main=glue("{acct}: \n Effect of Repost on Non-Followers' Follow Rate"), 
+  col="steelblue",
+  xlab="Time Relative to Repost",
+  ylim = c(-0.0005 * pop_non, 0.001 * pop_non)
+)
 
 ggiplot(
   list("Followers"=twfe_fol, "Non-Followers"=twfe_non), 
   main=glue("{acct}: \n Effect of Repost on Follow Rate"), 
   col=c("red", "steelblue"),
-  xlab="Time Relative to Repost"
+  xlab="Time Relative to Repost",
+  multi_style="facet",
+  facet_args = list(ncol = 2, scales = 'free_y')
 ) +
   theme(plot.title = element_text(hjust = 0.5))
 
@@ -95,3 +120,7 @@ msummary(
   shape=term ~ model + statistic,
   statistic = c( "statistic", "std.error", "p.value", "conf.low", "conf.high"),
   output="latex")
+
+write.csv(tidy(twfe_fol), glue('~/attention-brokers-bsky/r_out/{acct}_twfe_fol.csv'))
+
+write.csv(tidy(twfe_non), glue('~/attention-brokers-bsky/r_out/{acct}_twfe_non.csv'))
