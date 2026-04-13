@@ -10,6 +10,7 @@ library(kableExtra)
 library(modelsummary)
 library(jsonlite)
 library(broom)
+
 cls = c(
   period = "numeric",
   post.treat = "factor",
@@ -20,7 +21,7 @@ cls = c(
   year_treated = "numeric"
 )
 
-acct = 'karaswisher.bsky.social'
+acct = 'timothysnyder.bsky.social'
 json_data <- read_json(glue(
   "~/attention-brokers-bsky/population_counts/{acct}_fwd_14_bwd_14.json"))
 pop_fol = json_data$ab_followers
@@ -44,31 +45,12 @@ data_con$treat = 0
 dat_list = list(data_did, data_con)
 data = rbindlist(dat_list)
 
-simple_fol = feols(gain_rate_fol ~ post.treat | unit_id + period, data=data)
-simple_non = feols(gain_rate_non ~ post.treat | unit_id + period, data=data)
-
-
-twfe_fol = feols(gain_rate_fol ~ i(ts, treat, ref=-14)  | 
+# try fepois
+twfe_fol = fepois(gain_rate_fol ~ i(ts, treat, ref=-14)  | 
                unit_id + period, cluster=~unit_id, data=data)
 
-twfe_non = feols(gain_rate_non ~ i(ts, treat, ref=-14)   | 
+twfe_non = fepois(gain_rate_non ~ i(ts, treat, ref=-14)   | 
                unit_id + period, cluster=~unit_id, data=data)
-
-ggiplot(
-  twfe_fol, 
-  main=glue("{acct}: \n Effect of Repost on Followers' Follow Rate"), 
-  col="red",
-  xlab="Time Relative to Repost",
-  ylim = c(-0.0005 * pop_fol, 0.001 * pop_fol)
-)
-
-ggiplot(
-  twfe_non, 
-  main=glue("{acct}: \n Effect of Repost on Non-Followers' Follow Rate"), 
-  col="steelblue",
-  xlab="Time Relative to Repost",
-  ylim = c(-0.0005 * pop_non, 0.001 * pop_non)
-)
 
 ggiplot(
   list("Followers"=twfe_fol, "Non-Followers"=twfe_non), 
@@ -76,7 +58,7 @@ ggiplot(
   col=c("red", "steelblue"),
   xlab="Time Relative to Repost",
   multi_style="facet",
-  facet_args = list(ncol = 2, scales = 'free_y')
+  facet_args = list(ncol = 2)
 ) +
   theme(plot.title = element_text(hjust = 0.5))
 
@@ -98,28 +80,20 @@ compare_coefs <- function(twfe0, twfe1, ix){
   return((estimate1 - estimate0) / (sqrt(se0^2 + se1 ^ 2)))
   
 }
+
 compare_coefs(twfe_fol, twfe_non, 13)
 pnorm(compare_coefs(twfe_fol, twfe_non, 13))
 compare_coefs(simple_fol, simple_non, 1)
 pnorm(compare_coefs(simple_fol, simple_non, 1))
-dwplot(
-  list("Followers" = simple_fol, "Non-Followers" = simple_non),
-)  +
-  scale_color_manual(
-    values=c("Followers" = "red", "Non-Followers" = "steelblue"))  +
-  ggtitle(glue("{acct}: \n DiD Comparison for Followers and Non-Followers")) +
-  xlim(0, 1.5e-04) +
-  theme(plot.title = element_text(hjust = 0.5)) +
-  xlab("Effect Size") + 
-  coord_flip()
 
-msummary(
-  simple_fol,
-  signif.stars = TRUE,
-  fmt = fmt_significant(3),
-  shape=term ~ model + statistic,
-  statistic = c( "statistic", "std.error", "p.value", "conf.low", "conf.high"),
-  output="latex")
+
+# msummary(
+#   simple_fol,
+#   signif.stars = TRUE,
+#   fmt = fmt_significant(3),
+#   shape=term ~ model + statistic,
+#   statistic = c( "statistic", "std.error", "p.value", "conf.low", "conf.high"),
+#   output="latex")
 
 write.csv(tidy(twfe_fol), glue('~/attention-brokers-bsky/r_out/{acct}_twfe_fol.csv'))
 

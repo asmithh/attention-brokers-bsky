@@ -198,3 +198,24 @@ encoded as 1, and so on.
 I'm currently rerunning the regular data collection and the control data 
 collections. I'm hoping to confirm that the spike in the control data goes away
 with this intervention as a major sanity check. Then I'll rerun the regressions.
+
+20260412 2pm:
+Over the weekend, I tried a two-way fixed effects event study with absolute 
+follow counts, because when I divided by population size, the numerous 0 values
+for follow count got mashed in with the very-close-to-zero values of low follow 
+counts divided by very large population sizes. This skewed the data towards zero.
+I talked to Fiona about handling this issue, and she suggested a Poisson 
+regression rather than OLS. Poisson regression might make sense in this case 
+because we're dealing with count data -- we're counting daily follows to a 
+reposted account or a control account -- so the latest version of the diff-in-diff
+code uses fepois rather than feols. 
+
+The coefficients have a different meaning than before: if a coefficient is equal
+to c, then the effect that exposure to treatment has (above what we'd expect for
+a control account) is e^c - 1. So if we have a value of roughly 1 for c, then we'd
+see a 171% increase in follows relative to what control accounts are experiencing. 
+
+I've rerun the analyses for all accounts except for Ken White (popehat) -- he has
+a lot of data, so pulling the control accounts for him is taking a really long time.
+Next, I'm going to clean up the repo a bit as well before committing.
+Also, the folder r_out contains the Poisson regression results for each account.

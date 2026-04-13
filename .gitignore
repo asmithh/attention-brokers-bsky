@@ -6,3 +6,4 @@ deprecated_data_files/*
 __pycache__/*
 mark_data/*
 processed_did_csvs/*
+plots/deprecated/*
