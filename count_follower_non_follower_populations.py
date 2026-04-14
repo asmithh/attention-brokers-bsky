@@ -126,7 +126,7 @@ def count_populations(HANDLE, df_follows, days_fwd, days_bwd):
         # first, figure out when the follower --> reposted tie happened relative to the repost
         # pl.col('whatever1').sub(pl.col('whatever2')) subtracts the values in whatever2 from the values in whatever1.
         follows_to_op_following_ab = follows_to_op_following_ab.with_columns(
-            ((pl.col('created_at').sub(pl.col('repost_created_at'))).dt.total_days()).alias('days_before_after_repost'),
+            ((pl.col('created_at').sub(pl.col('repost_created_at'))).dt.total_minutes().floordiv(24 * 60)).alias('days_before_after_repost'),
             (pl.col('created_at_from_ab').fill_null(repost_created_at.item() + dt.timedelta(days=5 * 365)))
         )
         # next, figure out who is a follower of the attention broker (i.e. in the treatment group)

@@ -124,7 +124,7 @@ def make_control_csv(HANDLE, df_follows, days_fwd, days_bwd, n_controls=3):
             right_on='orig_poster',
             how='anti',
         )
-        followed_sample = followed_to_sample_from.sample(n=n_controls, seed=42)
+        followed_sample = followed_to_sample_from.sample(n=n_controls)
 
         for en, sample in enumerate(followed_sample.iter_rows(named=True)):
             # get all the follows to OP that could've happened in the time we observed
@@ -151,7 +151,7 @@ def make_control_csv(HANDLE, df_follows, days_fwd, days_bwd, n_controls=3):
             # first, figure out when the follower --> reposted tie happened relative to the repost
             # pl.col('whatever1').sub(pl.col('whatever2')) subtracts the values in whatever2 from the values in whatever1.
             follows_to_control_following_ab = follows_to_control_following_ab.with_columns(
-                ((pl.col('created_at').sub(pl.col('repost_created_at'))).dt.total_hours().floordiv(24)).alias('days_before_after_repost'),
+                ((pl.col('created_at').sub(pl.col('repost_created_at'))).dt.total_minutes().floordiv(24 * 60)).alias('days_before_after_repost'),
                 (pl.col('created_at_from_ab').fill_null(repost_created_at.item() + dt.timedelta(days=5 * 365))),
             )
             # obtain all follow events prior to repost

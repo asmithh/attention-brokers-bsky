@@ -77,7 +77,9 @@ def complete_interpolation_for_unit(gr):
         for ts_rel, ts_per in zip(ts, time_period):
             if not(np.isnan(ts_per)):
                 offset = ts_per - ts_rel
-                
+            
+        if offset is None:
+            return []     
         try:
             # interpolate based on offset
             return [ts_rel + offset if np.isnan(ts_per) else ts_per for ts_rel, ts_per in zip(ts, time_period)]
@@ -98,7 +100,7 @@ def complete_interpolation_for_unit(gr):
         periods[False] = periods[True]
     return periods[False] + periods[True] # concatenate in correct order to apply to sorted dataframe.
 
-time_period_by_unit = df.groupby('unit_id').apply(complete_interpolation_for_unit).explode() # flatten list of lists
+time_period_by_unit = df.groupby('unit_id').apply(complete_interpolation_for_unit, include_groups=False).explode() # flatten list of lists
 df['time_period'] = time_period_by_unit.to_list() # add interpolated time_period column
 
 df.to_csv(f'{FILEPATH}/{OUT_CSV_DIR}/{HANDLE}_fwd_{DAYS_FWD}_bwd_{DAYS_BWD}.csv')

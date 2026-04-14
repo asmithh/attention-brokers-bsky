@@ -199,7 +199,7 @@ I'm currently rerunning the regular data collection and the control data
 collections. I'm hoping to confirm that the spike in the control data goes away
 with this intervention as a major sanity check. Then I'll rerun the regressions.
 
-20260412 2pm:
+20260413 2pm:
 Over the weekend, I tried a two-way fixed effects event study with absolute 
 follow counts, because when I divided by population size, the numerous 0 values
 for follow count got mashed in with the very-close-to-zero values of low follow 
@@ -219,3 +219,13 @@ I've rerun the analyses for all accounts except for Ken White (popehat) -- he ha
 a lot of data, so pulling the control accounts for him is taking a really long time.
 Next, I'm going to clean up the repo a bit as well before committing.
 Also, the folder r_out contains the Poisson regression results for each account.
+
+20260413 9pm:
+Put the Python code through Claude and found some subtle bugs. Floor dividing the total
+hours elapsed between repost and follow event by 24 leads to a bug where the hour 
+of follows that happen right before the repost will be counted as happening on day 0 
+when that isn't accurate. I've changed this to divide total_minutes by 24 * 60. 
+I think one minute of bleed-through is acceptable, but an hour is not. Also, the 
+random seed being fixed for control account selection might mean that there isn't 
+enough randomness in our selection of control accounts. I've gotten rid of the fixed
+random seed and will rerun data collection again this week. 
