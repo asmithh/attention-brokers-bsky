@@ -21,7 +21,7 @@ cls = c(
   year_treated = "numeric"
 )
 
-acct = 'timothysnyder.bsky.social'
+acct = 'swiftonsecurity.com'
 json_data <- read_json(glue(
   "~/attention-brokers-bsky/population_counts/{acct}_fwd_14_bwd_14.json"))
 pop_fol = json_data$ab_followers
@@ -62,29 +62,41 @@ ggiplot(
 ) +
   theme(plot.title = element_text(hjust = 0.5))
 
+# betahat <- summary(twfe_fol)$coefficients #save the coefficients
+# sigma <- summary(twfe_fol)$cov.scaled
+# 
+# delta_rm_results <-
+#   HonestDiD::createSensitivityResults_relativeMagnitudes(
+#     betahat = betahat, #coefficients
+#     sigma = sigma, #covariance matrix
+#     numPrePeriods = 13, #num. of pre-treatment coefs
+#     numPostPeriods = 13, #num. of post-treatment coefs
+#     Mbarvec = seq(0.5,2,by=0.5) #values of Mbar
+# )
+
 get_coefs <- function(twfe, ix) {
   orig_estimate <- unlist(twfe$coefficients[ix])
   orig_se <- unlist(twfe$se[ix])
   return(c(as.numeric(orig_estimate), as.numeric(orig_se)))
 }
 
-compare_coefs <- function(twfe0, twfe1, ix){
-  coefs0 <- get_coefs(twfe0, ix)
+compare_coefs <- function(twfe0, twfe1, ix0, ix1){
+  coefs0 <- get_coefs(twfe0, ix0)
   estimate0 <- coefs0[1]
   se0 <- coefs0[2]
-  
-  coefs1 <- get_coefs(twfe1, ix)
+
+  coefs1 <- get_coefs(twfe1, ix1)
   estimate1 <- coefs1[1]
   se1 <- coefs1[2]
-  
-  return((estimate1 - estimate0) / (sqrt(se0^2 + se1 ^ 2)))
-  
-}
 
-compare_coefs(twfe_fol, twfe_non, 13)
-pnorm(compare_coefs(twfe_fol, twfe_non, 13))
-compare_coefs(simple_fol, simple_non, 1)
-pnorm(compare_coefs(simple_fol, simple_non, 1))
+  return((estimate1 - estimate0) / (sqrt(se0^2 + se1 ^ 2)))
+
+}
+# 
+# compare_coefs(twfe_fol, twfe_non, 13)
+# pnorm(compare_coefs(twfe_fol, twfe_non, 13))
+# compare_coefs(simple_fol, simple_non, 1)
+# pnorm(compare_coefs(simple_fol, simple_non, 1))
 
 
 # msummary(
