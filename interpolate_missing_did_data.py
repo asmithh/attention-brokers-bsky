@@ -77,9 +77,7 @@ def complete_interpolation_for_unit(gr):
         for ts_rel, ts_per in zip(ts, time_period):
             if not(np.isnan(ts_per)):
                 offset = ts_per - ts_rel
-            
-        if offset is None:
-            return []     
+
         try:
             # interpolate based on offset
             return [ts_rel + offset if np.isnan(ts_per) else ts_per for ts_rel, ts_per in zip(ts, time_period)]
