@@ -1,5 +1,6 @@
 import datetime as dt 
 import json
+from zoneinfo import ZoneInfo
 
 import polars as pl
 from polars.datatypes import String, Int64, Datetime
@@ -285,6 +286,8 @@ def load_df_follows(filepath_to_follows, testing=False):
             strict=False,
         ))
     )
+
+    return df_follows
 
 def extract_did_from_uri(uri):
     """
