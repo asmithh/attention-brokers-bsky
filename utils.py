@@ -287,6 +287,7 @@ def load_df_follows(filepath_to_follows, testing=False):
         ))
     )
 
+    df_follows = df_follows.drop_nulls() # drop null parsed datetimes (where we failed to parse)
     return df_follows
 
 def extract_did_from_uri(uri):

@@ -35,7 +35,7 @@ DAYS_BWD = int(sys.argv[3])
 df_follows = load_df_follows(FILEPATH)
 
 
-def make_control_csv(HANDLE, df_follows, days_fwd, days_bwd, n_controls=3):
+def make_control_csv(handle, df_follows, days_fwd, days_bwd, n_controls=3):
     """
     Make CSV of data for use with difference-in-differences. Columns are explained at the top of the file.
 
@@ -95,12 +95,8 @@ def make_control_csv(HANDLE, df_follows, days_fwd, days_bwd, n_controls=3):
                 repost_created_at,
             )
 
-            followers_before_repost = determine_attention_broker_followers(followers_before_repost, before=True)
-            followers_after_repost = determine_attention_broker_followers(followers_after_repost, before=False)
-
-            if sample['to'] not in control_unit_ids:
-                control_unit_ids[sample['to']] = max_unit_id
-                max_unit_id += 1
+            followers_before_repost = delineate_and_count_attention_broker_followers(followers_before_repost, before=True)
+            followers_after_repost = delineate_and_count_attention_broker_followers(followers_after_repost, before=False)
             
             curr_unit_id = accts_to_unit_id[sample['to']]
 

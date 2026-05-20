@@ -82,8 +82,8 @@ def make_did_csv(handle, df_follows, days_fwd, days_bwd):
             repost_created_at
         )
 
-        followers_before_repost = determine_attention_broker_followers(followers_before_repost, before=True)
-        followers_after_repost = determine_attention_broker_followers(followers_after_repost, before=False)
+        followers_before_repost = delineate_and_count_attention_broker_followers(followers_before_repost, before=True)
+        followers_after_repost = delineate_and_count_attention_broker_followers(followers_after_repost, before=False)
     
         data_final = extend_final_dataframe(
             data_final, 
