@@ -208,14 +208,14 @@ class TestPartitionFollowsBeforeAfterRepost:
 
     def test_follows_before_repost_accurate(self):
         # check that follows_before_repost contains only accounts that followed the OP between low_follow_bound and the repost.
-        assert len(self.follows_before_repost) == 10 # should be 5 accounts following OP between day -1 and day 0, plus 5 between day -14 and day -1.
+        assert len(self.follows_before_repost) == 100 # should be 50 accounts following OP between day -1 and day 0, plus 50 between day -14 and day -1.
         # check time bounds on follow events.
         assert self.follows_before_repost.select(pl.col('created_at').min()).item() >= self.low_follow_bound
         assert self.follows_before_repost.select(pl.col('created_at').max()).item() < self.repost_created_at.item()
 
     def test_follows_after_repost_accurate(self):
         # check that follows_after_repost contains only accounts that followed the OP between the repost and high_follow_bound.
-        assert len(self.follows_after_repost) == 15 # should be 10 accounts following OP between day 0 and day 1, plus 5 between day 1 and day 14.
+        assert len(self.follows_after_repost) == 150 # should be 100 accounts following OP between day 0 and day 1, plus 50 between day 1 and day 14.
         # check time bounds on follow events.
         assert self.follows_after_repost.select(pl.col('created_at').min()).item() >= self.repost_created_at.item()
         assert self.follows_after_repost.select(pl.col('created_at').max()).item() < self.high_follow_bound
@@ -281,3 +281,81 @@ class TestDelineateAndCountAttentionBrokerFollowers:
             self.high_follow_bound, 
             self.low_follow_bound,
         )
+        self.follows_before_repost, self.follows_after_repost = partition_follows_before_after_repost(
+            self.follows_to_op_following_ab, 
+            self.repost_created_at
+        )
+
+        self.followers_before_repost = delineate_and_count_attention_broker_followers(self.follows_before_repost, before=True)
+        self.followers_after_repost = delineate_and_count_attention_broker_followers(self.follows_after_repost, before=False)
+    
+    def test_followers_before_conserved(self):
+        # check that followers returned from partition_follows_before_after_repost are conserved 
+        # in what delineate_and_count_attention_broker_follows outputs.
+        assert self.followers_before_repost.select(pl.col('from').sum()).item() == len(self.follows_before_repost)
+
+    def test_followers_before_conserved(self):
+        # check that followers returned from partition_follows_before_after_repost are conserved 
+        # in what delineate_and_count_attention_broker_follows outputs.
+        assert self.followers_after_repost.select(pl.col('from').sum()).item() == len(self.follows_after_repost)
+
+    def test_ab_follower_count_before_conserved(self):
+        # make sure the delineation between followers and non-followers is preserved between the output of 
+        # partition_follows_before_after_repost and the output of delineate_and_count_attention_broker_follows.
+        true_tot_ab_followers = self.follows_before_repost.filter(
+            (pl.col('to_from_ab').is_not_null()) & (pl.col('created_at_from_ab') < pl.col('created_at'))
+        )
+        tot_ab_followers = self.followers_before_repost.filter(pl.col('ab_follower') == True).select(pl.col('from').sum()).item()
+        assert len(true_tot_ab_followers) == tot_ab_followers
+
+    def test_ab_follower_count_after_conserved(self):
+        # make sure the delineation between followers and non-followers is preserved between the output of 
+        # partition_follows_before_after_repost and the output of delineate_and_count_attention_broker_follows.
+        true_tot_ab_followers = self.follows_after_repost.filter(
+            (pl.col('to_from_ab').is_not_null()) & (pl.col('created_at_from_ab') < pl.col('repost_created_at'))
+        )
+        tot_ab_followers = self.followers_after_repost.filter(pl.col('ab_follower') == True).select(pl.col('from').sum()).item()
+        assert len(true_tot_ab_followers) == tot_ab_followers
+
+    def test_per_day_ab_follower_correctness_before(self):
+        # for each day for which we have a follow event to OP occurring,
+        # check to make sure we have the appropriate number of AB followers and non-followers
+        # counted towards the correct rows.
+        for days_rel, data in self.follows_before_repost.group_by('days_before_after_repost'):
+            ab_followers = len(
+                data.filter(
+                    (pl.col('created_at_from_ab').is_not_null()) & \
+                    (pl.col('created_at').sub(pl.col('created_at_from_ab')).dt.total_seconds() > 0
+                ))
+            )
+            if ab_followers != 0:
+                assert ab_followers == self.followers_before_repost.filter(
+                    (pl.col('days_before_after_repost') == days_rel[0]) & \
+                    (pl.col('ab_follower') == True)
+                ).select(pl.col('from').sum()).item()
+            assert len(data) - ab_followers == self.followers_before_repost.filter(
+                (pl.col('days_before_after_repost') == days_rel[0]) & \
+                (pl.col('ab_follower') == False)
+                    ).select(pl.col('from').sum()).item()
+            
+    def test_per_day_ab_follower_correctness_after(self):
+        # for each day for which we have a follow event to OP occurring,
+        # check to make sure we have the appropriate number of AB followers and non-followers
+        # counted towards the correct rows.
+        for days_rel, data in self.follows_after_repost.group_by('days_before_after_repost'):
+            ab_followers = len(
+                data.filter(
+                    (pl.col('created_at_from_ab').is_not_null()) & \
+                    (pl.col('repost_created_at').sub(pl.col('created_at_from_ab')).dt.total_seconds() > 0
+                ))
+            )
+            if ab_followers != 0:
+                assert ab_followers == self.followers_after_repost.filter(
+                    (pl.col('days_before_after_repost') == days_rel[0]) & \
+                    (pl.col('ab_follower') == True)
+                ).select(pl.col('from').sum()).item()
+            assert len(data) - ab_followers == self.followers_after_repost.filter(
+                (pl.col('days_before_after_repost') == days_rel[0]) & \
+                (pl.col('ab_follower') == False)
+                    ).select(pl.col('from').sum()).item()
+        

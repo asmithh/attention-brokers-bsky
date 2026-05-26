@@ -24,48 +24,6 @@ def get_followed_accts_and_unit_ids(df_follows, handle, ab_did, df_reposts):
 
     return followers_of_ab, followed_by_ab, accts_to_unit_id
 
-def extend_final_dataframe(
-    data_final,
-    followers_before_repost, 
-    followers_after_repost,
-    unit_id,
-    repost_period
-):
-    """
-    Given dataframes of per-day follow counts before and after the repost, 
-    concatenate the results to the final dataframe-in-the-making. 
-
-    Inputs:
-      data_final: list of dicts that will eventually become a polars dataframe.
-      followers_before_repost: polars dataframe with per-day follow counts for every combination of 
-        (days before/after repost, attention broker follower/non-follower) for which we have at least one follow event
-        this is just for all the follow events that occurred prior to the attention broker's repost of the original poster.
-      followers_after_repost: polars dataframe with per-day follow counts for every combination of 
-        (days before/after repost, attention broker follower/non-follower) for which we have at least one follow event
-        this is just for all the follow events that occurred after the attention broker's repost of the original poster.
-      unit_id: int; uniquely indicates which account is reposted/being observed.
-      repost_period: int; indicates how many days after the minimum repost event this repost occurred.
-
-    Returns:
-      data_final: list of dicts that will eventually become a polars dataframe. has the following columns:
-        gain_rate: int; number of follows that occurred on that day for either followers or non-followers
-        ever_treated: were these follows from followers or non-followers of the attention broker? 0 indicates non-followers; 1 indicates followers.
-        unit_id: unique int identifier for the reposted or focal account.
-        time_period: int; number of days that have passed since the earliest repost in the dataset.
-        ts: int; days relative to the repost.
-    
-    """
-    for df_fol in [followers_before_repost, followers_after_repost]:
-        for row in df_fol.iter_rows(named=True):
-            data_final.append({
-                'gain_rate': row['from'],
-                'ever_treated': row['ab_follower'],
-                'unit_id': unit_id,
-                'time_period': repost_period + row['days_before_after_repost'],
-                'ts': row['days_before_after_repost'],
-            })
-    
-    return data_final
 
 def delineate_and_count_attention_broker_followers(followers, before=True):
     """

@@ -100,13 +100,15 @@ def make_control_csv(handle, df_follows, days_fwd, days_bwd, n_controls=3):
             
             curr_unit_id = accts_to_unit_id[sample['to']]
 
-            data_final = extend_final_dataframe(
-                data_final, 
-                followers_before_repost, 
-                followers_after_repost, 
-                curr_unit_id, 
-                repost_period
-            )
+            for df_fol in [followers_before_repost, followers_after_repost]:
+                for row in df_fol.iter_rows(named=True):
+                    data_final.append({
+                        'gain_rate': row['from'],
+                        'ever_treated': row['ab_follower'],
+                        'unit_id': curr_unit_id,
+                        'time_period': repost_period + row['days_before_after_repost'],
+                        'ts': row['days_before_after_repost'],
+                    })
             
     # build dataframe from list of dicts
     data = pl.DataFrame(data_final)    
