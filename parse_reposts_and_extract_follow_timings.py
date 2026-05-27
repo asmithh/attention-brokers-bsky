@@ -85,15 +85,15 @@ def make_did_csv(handle, df_follows, days_fwd, days_bwd):
         followers_before_repost = delineate_and_count_attention_broker_followers(followers_before_repost, before=True)
         followers_after_repost = delineate_and_count_attention_broker_followers(followers_after_repost, before=False)
     
-    for df_fol in [followers_before_repost, followers_after_repost]:
-        for row in df_fol.iter_rows(named=True):
-            data_final.append({
-                'gain_rate': row['from'],
-                'ever_treated': row['ab_follower'],
-                'unit_id': accts_to_unit_id[orig_poster],
-                'time_period': repost_period + row['days_before_after_repost'],
-                'ts': row['days_before_after_repost'],
-            })
+        for df_fol in [followers_before_repost, followers_after_repost]:
+            for row in df_fol.iter_rows(named=True):
+                data_final.append({
+                    'gain_rate': row['from'],
+                    'ever_treated': row['ab_follower'],
+                    'unit_id': accts_to_unit_id[orig_poster],
+                    'time_period': repost_period + row['days_before_after_repost'],
+                    'ts': row['days_before_after_repost'],
+                })
 
     # build dataframe from list of dicts
     data = pl.DataFrame(data_final)    
