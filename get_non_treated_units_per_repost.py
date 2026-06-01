@@ -1,10 +1,7 @@
 import datetime as dt
-import json
-import os
 import sys
 
 import polars as pl
-from polars.datatypes import String, Int64, Datetime
 
 from config import FILEPATH, FILEPATH_OUT, AB_DIDS, REPOST_CUTOFF
 from utils import *
@@ -59,13 +56,12 @@ def make_control_csv(handle, df_follows, days_fwd, days_bwd, n_controls=3):
     )
 
     data_final = [] # will be used to create dataframe of DiD data.
-
+    previous_repost_and_control_combos = []
     for ix, row in enumerate(df_reposts.iter_rows(named=True)):
         # this looks weird, but it means I can do polars dataframe math with repost_created_at
         repost_created_at = pl.DataFrame({'created_at': [row['created_at']]})
         repost_period = (repost_created_at.item() - min_repost_day).days # relative date of repost
         
-        orig_poster = row['orig_poster'] # referred to as OP (original poster) in these comments
         low_follow_bound = row['created_at'] - dt.timedelta(days=days_bwd) # the minimum day we will collect following data for
         high_follow_bound = row['created_at'] + dt.timedelta(days=days_fwd) # the maximum day we will collect following data for
 
@@ -78,9 +74,27 @@ def make_control_csv(handle, df_follows, days_fwd, days_bwd, n_controls=3):
             right_on='orig_poster',
             how='anti',
         )
-        followed_sample = followed_to_sample_from.sample(n=n_controls)
+        if len(previous_repost_and_control_combos) > 0:
+            previous_repost_and_control_combos_on_day = pl.DataFrame(previous_repost_and_control_combos).filter(
+                pl.col('repost_period') == repost_period
+            )
+            followed_to_sample_from = followed_to_sample_from.join(
+                pl.DataFrame(previous_repost_and_control_combos_on_day),
+                left_on='to',
+                right_on='followed',
+                how='anti',
+            )
+            
+        if len(followed_to_sample_from) >= n_controls:
+            followed_sample = followed_to_sample_from.sample(n=n_controls)
+        else:
+            followed_sample = followed_to_sample_from
 
-        for en, sample in enumerate(followed_sample.iter_rows(named=True)):
+        for sample in followed_sample.iter_rows(named=True):
+            previous_repost_and_control_combos.append({
+                'followed': sample['to'], 
+                'repost_period': repost_period,
+            })
             follows_to_control_following_ab = get_follows_to_reposted_account(
                 df_follows,
                 sample['to'],
@@ -103,6 +117,7 @@ def make_control_csv(handle, df_follows, days_fwd, days_bwd, n_controls=3):
             for df_fol in [followers_before_repost, followers_after_repost]:
                 for row in df_fol.iter_rows(named=True):
                     data_final.append({
+                        'repost_created_at': repost_created_at.with_columns(pl.col('created_at').cast(pl.Datetime).cast(pl.String)).item(),
                         'gain_rate': row['from'],
                         'ever_treated': row['ab_follower'],
                         'unit_id': curr_unit_id,
@@ -112,8 +127,6 @@ def make_control_csv(handle, df_follows, days_fwd, days_bwd, n_controls=3):
             
     # build dataframe from list of dicts
     data = pl.DataFrame(data_final)    
-    fwd_str = str(DAYS_FWD)
-    bwd_str = str(DAYS_BWD)
     data.write_csv(f'{FILEPATH_OUT}/control_csvs/{handle}_fwd_{DAYS_FWD}_bwd_{DAYS_BWD}.csv')
     print('done')
 

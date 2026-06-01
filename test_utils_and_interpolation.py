@@ -1,8 +1,10 @@
 import json
 
+import pandas as pd
 import polars as pl
 import pytest
 
+from interpolate_missing_did_data import *
 from utils import *
 
 def test_parse_repost_dict():
@@ -358,4 +360,87 @@ class TestDelineateAndCountAttentionBrokerFollowers:
                 (pl.col('days_before_after_repost') == days_rel[0]) & \
                 (pl.col('ab_follower') == False)
                     ).select(pl.col('from').sum()).item()
-        
+            
+class TestReindexAndFillInDataframe:
+    def setup_class(self):
+        self.df = pd.read_csv('./test_data/test_raw_did_data.csv')
+        self.reindexed_df = reindex_and_fill_in_dataframe(self.df, 14, 14)
+
+    def test_index_correct_length(self):
+        # make sure that the multiindex creates a dataframe of the correct length.
+        assert len(self.df) < len(self.reindexed_df)
+        assert len(self.reindexed_df) == 28 * 4 * 2 
+
+    def test_zero_gain_rates_filled_in(self):
+        # make sure that the rows without known follow events have gain_rate set to 0
+        rows_in_original = self.df.merge(
+            self.reindexed_df,
+            left_on=["unit_id", "ever_treated", "ts"],
+            how='right_anti',
+            right_on=["unit_id", "ever_treated", "ts"]
+        )
+        assert rows_in_original['gain_rate_y'].sum() == 0
+        assert rows_in_original['gain_rate_y'].min() == 0
+        assert rows_in_original['gain_rate_y'].max() == 0
+    
+    def test_sorted_correctly(self):
+        # make sure the sub-dataframes are sorted as expected, especially the ts values.
+        for _, gr in self.reindexed_df.groupby('unit_id'):
+            for treated, gr_tup in zip([False, True], gr.groupby('ever_treated')):
+                assert treated == gr_tup[1]['ever_treated'].unique()[0] 
+                assert gr_tup[1]['ts'].to_list() == sorted(gr_tup[1]['ts'].to_list())
+
+class TestInterpolateArrays:
+    def setup_class(self):
+        self.df = pd.read_csv('./test_data/test_raw_did_data.csv')
+        self.reindexed_df = reindex_and_fill_in_dataframe(self.df, 14, 14)
+        self.df = pd.read_csv('./test_data/test_raw_did_data.csv')
+
+    def test_interpolation_correct(self):
+        for unit_id, gr in self.reindexed_df.groupby('unit_id'):
+            for treat in [True, False]:
+                gr_sub = gr[gr['ever_treated'] == treat]
+                gr_sub['unit_id'] = unit_id
+                interpolated = interpolate_arrays(gr_sub)
+                # should return empty list if there are no known entries to compute an offset
+                if len(self.df[(self.df.unit_id == unit_id) & (self.df.ever_treated == treat)]) == 0:
+                    assert interpolated == []
+                    continue
+                # if offset is known, it should be consistent across all rows
+                gr_sub['time_period'] = interpolated
+                assert len((gr_sub['time_period'] - gr_sub['ts']).unique()) == 1
+
+class TestCompleteInterpolationForUnit:
+    def setup_class(self):
+        self.df = pd.read_csv('./test_data/test_raw_did_data.csv')
+        self.reindexed_df = reindex_and_fill_in_dataframe(self.df, 14, 14)
+        self.df = pd.read_csv('./test_data/test_raw_did_data.csv')
+    
+    def test_full_grouped_interpolations(self):
+        for unit_id, gr in self.reindexed_df.groupby('unit_id'):
+            df_unit_id = self.df[self.df.unit_id == unit_id]
+            # make sure offset between time_period and ts is consistent with raw dataframe 
+            # and consistent across all rows for the same unit id
+            offset = (df_unit_id['time_period'] - df_unit_id['ts']).to_list()[0]
+            gr['time_period'] = complete_interpolation_for_unit(gr)
+            assert [offset for i in range(len(gr))] == (gr['time_period'] - gr['ts']).to_list()
+
+class TestGetTimePeriodByUnit:
+    def setup_class(self):
+        self.df = pd.read_csv('./test_data/test_raw_did_data.csv')
+        self.reindexed_df = reindex_and_fill_in_dataframe(self.df, 14, 14)
+        self.df = pd.read_csv('./test_data/test_raw_did_data.csv')
+        self.reindexed_df['time_period'] = get_time_period_by_unit(self.reindexed_df).to_list() 
+    
+    def test_final_time_period_correct(self):
+        # get ground truth time period values the hard way
+        time_period_ground_truth = []
+        for _, gr in sorted(self.df.groupby('unit_id'), key=lambda b: b[0]):
+            offset = (gr['time_period'] - gr['ts']).unique()[0]
+            vals = [i + offset for i in range(-14, 14)] * 2
+            time_period_ground_truth.extend(vals)
+
+        # make sure we've added information
+        assert len(self.reindexed_df) > len(self.df)
+        # make sure ground truth matches interpolated version.
+        assert self.reindexed_df['time_period'].to_list() == time_period_ground_truth

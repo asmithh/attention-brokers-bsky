@@ -3,7 +3,7 @@ import json
 from zoneinfo import ZoneInfo
 
 import polars as pl
-from polars.datatypes import String, Int64, Datetime
+from polars.datatypes import Datetime
 
 """
 Utility functions for data parsing

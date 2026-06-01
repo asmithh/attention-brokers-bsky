@@ -1,10 +1,7 @@
 import datetime as dt
-import json
-import os
 import sys
 
 import polars as pl
-from polars.datatypes import String, Int64, Datetime
 
 from config import FILEPATH, FILEPATH_OUT, AB_DIDS, REPOST_CUTOFF
 from utils import *
