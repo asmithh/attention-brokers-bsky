@@ -117,8 +117,8 @@ def make_control_csv(handle, df_follows, days_fwd, days_bwd, n_controls=3):
             for df_fol in [followers_before_repost, followers_after_repost]:
                 for row in df_fol.iter_rows(named=True):
                     data_final.append({
-                        'repost_created_at': repost_created_at.with_columns(pl.col('created_at').cast(pl.Datetime).cast(pl.String)).item(),
                         'gain_rate': row['from'],
+                        'repost_created_at': repost_created_at.with_columns(pl.col('created_at').cast(pl.Datetime).cast(pl.String)).item(),
                         'ever_treated': row['ab_follower'],
                         'unit_id': curr_unit_id,
                         'time_period': repost_period + row['days_before_after_repost'],

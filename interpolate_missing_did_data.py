@@ -15,7 +15,7 @@ DAYS_FWD is the number of days for which we have data after the repost
 DAYS_BWD is the number of days for which we have data before the repost
 """
 
-def reindex_and_fill_in_dataframe(df, DAYS_BWD, DAYS_FWD):
+def reindex_and_fill_in_dataframe(df, DAYS_BWD, DAYS_FWD, idx_from_product=True):
     """
     Given df, a polars dataframe, create a new index where all possible combinations of 
     {unit ID, ever_treated, ts} are represented. Indices in this MultiIndex where no value
@@ -30,13 +30,26 @@ def reindex_and_fill_in_dataframe(df, DAYS_BWD, DAYS_FWD):
     """
     # Building a MultiIndex to fill in NaNs for missing data.
     # These are the combinations of values we should have, but some combinations will be missing.
-    iterables = [df['unit_id'].unique(), [True, False], range(-1 * DAYS_BWD, DAYS_FWD)]
+    if idx_from_product:
+        iterables = [df['unit_id'].unique(), [True, False], range(-1 * DAYS_BWD, DAYS_FWD)]
+        index_cols = ["unit_id", "ever_treated", "ts"]
+        idx = pd.MultiIndex.from_product(iterables, names=index_cols) 
+
+    else:
+        iterables = []
+        for tup, _ in df.groupby(['unit_id', 'repost_created_at']):
+            unit_id = tup[0]
+            repost_created_at = tup[1]
+            for ever_treated in [False, True]:
+                for ts in range(-1 * DAYS_BWD, DAYS_FWD):
+                    iterables.append((unit_id, repost_created_at, ever_treated, ts))
+        index_cols = ["unit_id", "repost_created_at", "ever_treated", "ts"]
+        idx = pd.MultiIndex.from_tuples(iterables, names=index_cols) 
+
     # Create a new index and reset index
     # per this StackOverflow post:
     # https://stackoverflow.com/questions/25909984/missing-data-insert-rows-in-pandas-and-fill-with-nan
-    idx = pd.MultiIndex.from_product(iterables, names=["unit_id", "ever_treated", "ts"]) 
-    df.set_index(["unit_id", "ever_treated", "ts"], inplace=True)
-    print(len(df.index), len(df.index.unique()))
+    df.set_index(index_cols, inplace=True)
     df = df.reindex(idx)
     df = df.sort_index() # sort index to make manipulations on time_period easier
     df = df.reset_index() # reset index to be a single index, not a MultiIndex
@@ -100,7 +113,7 @@ def complete_interpolation_for_unit(gr):
         periods[False] = periods[True]
     return periods[False] + periods[True] # concatenate in correct order to apply to sorted dataframe.
 
-def get_time_period_by_unit(df):
+def get_time_period_by_unit(df, group_with_repost_creation=False):
     """
     Given df, a polars dataframe, interpolate the time_period column in a per-reposted-unit fashion, 
     then flatten the resulting list of lists.
@@ -113,12 +126,20 @@ def get_time_period_by_unit(df):
     Outputs:
       a new time_period with all possible time_period values interpolated.
     """
-    time_period_by_unit = df.groupby(
-        'unit_id'
-    ).apply(
-        complete_interpolation_for_unit, 
-        include_groups=False
-    ).explode() # flatten list of lists
+    if group_with_repost_creation:
+        time_period_by_unit = df.groupby(
+            ['unit_id', 'repost_created_at']
+        ).apply(
+            complete_interpolation_for_unit, 
+            include_groups=False
+        ).explode() # flatten list of lists
+    else:
+        time_period_by_unit = df.groupby(
+            'unit_id'
+        ).apply(
+            complete_interpolation_for_unit, 
+            include_groups=False
+        ).explode() # flatten list of lists
 
     return time_period_by_unit
 
@@ -131,14 +152,17 @@ if __name__ == '__main__':
     if FTYPE == 'did':
         ORIG_CSV_DIR = 'did_csvs'
         OUT_CSV_DIR = 'interpolated_did_csvs'
+        idx_from_product = True
     elif FTYPE == 'control':
         ORIG_CSV_DIR = 'control_csvs'
         OUT_CSV_DIR = 'interpolated_control_csvs'
+        idx_from_product = False
 
     FILEPATH = '/home/nte5cp' # change this for your machine
 
     df = pd.read_csv(f'{FILEPATH}/{ORIG_CSV_DIR}/{HANDLE}_fwd_{DAYS_FWD}_bwd_{DAYS_BWD}.csv')
-    df = reindex_and_fill_in_dataframe(df, DAYS_FWD, DAYS_BWD)
+    df = reindex_and_fill_in_dataframe(df, DAYS_FWD, DAYS_BWD, idx_from_product=idx_from_product)
     df['time_period'] = get_time_period_by_unit(df).to_list() # add interpolated time_period column
-
+    if 'repost_created_at' in df.columns:
+        df = df.drop('repost_created_at', axis=1)
     df.to_csv(f'{FILEPATH}/{OUT_CSV_DIR}/{HANDLE}_fwd_{DAYS_FWD}_bwd_{DAYS_BWD}.csv')
