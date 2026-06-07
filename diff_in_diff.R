@@ -10,6 +10,7 @@ library(kableExtra)
 library(modelsummary)
 library(jsonlite)
 library(broom)
+library(did)
 
 cls = c(
   period = "numeric",
@@ -21,7 +22,7 @@ cls = c(
   year_treated = "numeric"
 )
 
-acct = 'swiftonsecurity.com'
+acct = 'jamellebouie.net'
 json_data <- read_json(glue(
   "~/attention-brokers-bsky/population_counts/{acct}_fwd_14_bwd_14.json"))
 pop_fol = json_data$ab_followers
@@ -45,11 +46,12 @@ data_con$treat = 0
 dat_list = list(data_did, data_con)
 data = rbindlist(dat_list)
 
+# data <- data %>% filter_out(abs(ts) > 7)
 # try fepois
-twfe_fol = fepois(gain_rate_fol ~ i(ts, treat, ref=-14)  | 
+twfe_fol = fepois(gain_rate_fol ~ sunab(year_treated, period)  | 
                unit_id + period, cluster=~unit_id, data=data)
 
-twfe_non = fepois(gain_rate_non ~ i(ts, treat, ref=-14)   | 
+twfe_non = fepois(gain_rate_non ~ sunab(year_treated, period)   | 
                unit_id + period, cluster=~unit_id, data=data)
 
 ggiplot(
@@ -93,20 +95,20 @@ compare_coefs <- function(twfe0, twfe1, ix0, ix1){
 
 }
 # 
-# compare_coefs(twfe_fol, twfe_non, 13)
-# pnorm(compare_coefs(twfe_fol, twfe_non, 13))
-# compare_coefs(simple_fol, simple_non, 1)
-# pnorm(compare_coefs(simple_fol, simple_non, 1))
 
+msummary(
+  twfe_fol,
+  stars = TRUE,
+  fmt = fmt_significant(3),
+  shape=term ~ model + statistic,
+  statistic = c( "statistic", "std.error", "p.value", "conf.low", "conf.high"),
+  output="latex")
 
-# msummary(
-#   simple_fol,
-#   signif.stars = TRUE,
-#   fmt = fmt_significant(3),
-#   shape=term ~ model + statistic,
-#   statistic = c( "statistic", "std.error", "p.value", "conf.low", "conf.high"),
-#   output="latex")
+compare_coefs(twfe_fol, twfe_non, 14, 14)
+pnorm(compare_coefs(twfe_fol, twfe_non, 14, 14))
+compare_coefs(twfe_fol, twfe_fol, 14, 13)
+pnorm(compare_coefs(twfe_fol, twfe_fol, 14, 13))
 
-write.csv(tidy(twfe_fol), glue('~/attention-brokers-bsky/r_out/{acct}_twfe_fol.csv'))
-
-write.csv(tidy(twfe_non), glue('~/attention-brokers-bsky/r_out/{acct}_twfe_non.csv'))
+# write.csv(tidy(twfe_fol), glue('~/attention-brokers-bsky/r_out/{acct}_twfe_fol.csv'))
+# 
+# write.csv(tidy(twfe_non), glue('~/attention-brokers-bsky/r_out/{acct}_twfe_non.csv'))
