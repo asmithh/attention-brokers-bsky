@@ -22,12 +22,9 @@ cls = c(
   year_treated = "numeric"
 )
 
-acct = 'jamellebouie.net'
-json_data <- read_json(glue(
-  "~/attention-brokers-bsky/population_counts/{acct}_fwd_14_bwd_14.json"))
-pop_fol = json_data$ab_followers
-pop_non = json_data$non_followers
-fpath_did = '~/attention-brokers-bsky/processed_did_csvs'
+acct = 'pattonoswalt.bsky.social'
+anticipation_starts = -1
+fpath_did = '~/attention-brokers-bsky/new_processed_did_csvs'
 fname_did = glue('{fpath_did}/{acct}_processed_did_data.csv')
 data_did = fread(
   fname_did,
@@ -35,7 +32,7 @@ data_did = fread(
 )
 data_did$treat = 1
 
-fpath_con = '~/attention-brokers-bsky/processed_control_csvs'
+fpath_con = '~/attention-brokers-bsky/new_processed_control_csvs'
 fname_con = glue('{fpath_con}/{acct}_processed_did_data.csv')
 data_con = fread(
   fname_con,
@@ -48,33 +45,22 @@ data = rbindlist(dat_list)
 
 # data <- data %>% filter_out(abs(ts) > 7)
 # try fepois
-twfe_fol = fepois(gain_rate_fol ~ sunab(year_treated, period)  | 
+twfe_fol = fepois(gain_rate_fol ~ i(ts, treat, ref=anticipation_starts - 1)   |
                unit_id + period, cluster=~unit_id, data=data)
 
-twfe_non = fepois(gain_rate_non ~ sunab(year_treated, period)   | 
+twfe_non = fepois(gain_rate_non ~ i(ts, treat, ref=anticipation_starts - 1)   |
                unit_id + period, cluster=~unit_id, data=data)
+
 
 ggiplot(
-  list("Followers"=twfe_fol, "Non-Followers"=twfe_non), 
-  main=glue("{acct}: \n Effect of Repost on Follow Rate"), 
+  list("Followers"=twfe_fol, "Non-Followers"=twfe_non),
+  main=glue("{acct}: \n Effect of Repost on Follow Rate"),
   col=c("red", "steelblue"),
   xlab="Time Relative to Repost",
   multi_style="facet",
   facet_args = list(ncol = 2)
 ) +
   theme(plot.title = element_text(hjust = 0.5))
-
-# betahat <- summary(twfe_fol)$coefficients #save the coefficients
-# sigma <- summary(twfe_fol)$cov.scaled
-# 
-# delta_rm_results <-
-#   HonestDiD::createSensitivityResults_relativeMagnitudes(
-#     betahat = betahat, #coefficients
-#     sigma = sigma, #covariance matrix
-#     numPrePeriods = 13, #num. of pre-treatment coefs
-#     numPostPeriods = 13, #num. of post-treatment coefs
-#     Mbarvec = seq(0.5,2,by=0.5) #values of Mbar
-# )
 
 get_coefs <- function(twfe, ix) {
   orig_estimate <- unlist(twfe$coefficients[ix])
@@ -109,6 +95,31 @@ pnorm(compare_coefs(twfe_fol, twfe_non, 14, 14))
 compare_coefs(twfe_fol, twfe_fol, 14, 13)
 pnorm(compare_coefs(twfe_fol, twfe_fol, 14, 13))
 
+betahat <- summary(twfe_fol)$coefficients #save the coefficients
+sigma <- summary(twfe_fol)$cov.scaled #save the covariance matrix
+
+pre_periods = 13 + anticipation_starts
+post_periods = 14 - anticipation_starts
+l_vec = rep(0, post_periods)
+l_vec[1 - anticipation_starts] = 1
+originalResults <- HonestDiD::constructOriginalCS(betahat = betahat,
+                                                  sigma = sigma,
+                                                  numPrePeriods = pre_periods,
+                                                  numPostPeriods = post_periods,
+                                                  l_vec = l_vec)
+
 # write.csv(tidy(twfe_fol), glue('~/attention-brokers-bsky/r_out/{acct}_twfe_fol.csv'))
 # 
 # write.csv(tidy(twfe_non), glue('~/attention-brokers-bsky/r_out/{acct}_twfe_non.csv'))
+delta_rm_results <-
+  HonestDiD::createSensitivityResults_relativeMagnitudes(betahat = betahat,
+                                      sigma = sigma,
+                                      numPrePeriods = pre_periods,
+                                      numPostPeriods = post_periods,
+                                      Mbar = seq(from = 0, to = 2.0, by =0.2),
+                                      l_vec = l_vec)
+createSensitivityPlot_relativeMagnitudes(delta_rm_results, originalResults) + 
+  ggtitle(glue("Sensitivity Analysis on Relative Magnitude \n for {acct}")) +
+  theme(
+    plot.title=element_text( hjust=0.5, face='bold')
+  )
