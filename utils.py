@@ -24,6 +24,23 @@ def get_followed_accts_and_unit_ids(df_follows, handle, ab_did, df_reposts):
 
     return followers_of_ab, followed_by_ab, accts_to_unit_id
 
+def get_followed_accts_and_unit_ids_with_delineation(df_follows, handle, ab_did, df_reposts):
+    # get all the attention broker's followers
+    followers_of_ab = df_follows.filter(pl.col('to') == ab_did)
+    followed_by_ab = df_follows.filter(pl.col('from') == ab_did)
+    print(f'{handle} follows {len(followed_by_ab)} accounts.')
+
+    reposted_accts = set(pl.Series(df_reposts.select('orig_poster')).to_list())
+    followed_accts = set(pl.Series(followed_by_ab.select('to')).to_list())
+
+    reposted_accts_followed_by_ab = reposted_accts.intersection(followed_accts)
+    control_accts = followed_accts - reposted_accts
+
+    accts_to_unit_id = {acct: ix for ix, acct in enumerate(
+        sorted(list(followed_accts)))
+    }
+
+    return followers_of_ab, followed_by_ab, reposted_accts_followed_by_ab, control_accts, accts_to_unit_id
 
 def delineate_and_count_attention_broker_followers(followers, before=True):
     """
@@ -162,7 +179,9 @@ def make_repost_df(
     filepath_to_reposts,
     handle, 
     ab_did, 
+    days_buffer=5,
     repost_cutoff=dt.datetime(year=2025, month=9, day=15, tzinfo=ZoneInfo("UTC")),
+    left_time_cutoff=dt.datetime(year=2025, month=1, day=1, tzinfo=ZoneInfo("UTC")),
 ):
     """
     Make a polars dataframe of an attention broker's reposts.
@@ -190,11 +209,23 @@ def make_repost_df(
         )
     )
     # filter to reposts that are before the cutoff date
-    df_reposts = df_reposts.filter(pl.col('created_at') <= repost_cutoff)
+    df_reposts = df_reposts.filter(
+        (pl.col('created_at') <= repost_cutoff) & \
+        (pl.col('created_at') >= left_time_cutoff)
+    )
     # filter out self-reposts
     df_reposts = df_reposts.filter(pl.col('orig_poster') != ab_did)
     # only analyze the first repost by the attention broker
-    df_reposts = df_reposts.group_by(pl.col('orig_poster')).agg(pl.col('created_at').min())
+    next_repost_too_close = set()
+    for op, gr in df_reposts.group_by(pl.col('orig_poster')):
+        srt = sorted(gr['created_at'])
+        if len(srt) > 1:
+            if (srt[1] - srt[0]).days < days_buffer:
+                next_repost_too_close.add(op[0])
+
+    df_reposts = df_reposts.filter(~pl.col('orig_poster').is_in(next_repost_too_close))
+    df_reposts = df_reposts.group_by(pl.col('orig_poster')).agg(
+        pl.col('created_at').min())
     tot_reposts = len(df_reposts)
     
     # get earliest repost to make relative time_period column
