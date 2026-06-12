@@ -215,15 +215,8 @@ def make_repost_df(
     )
     # filter out self-reposts
     df_reposts = df_reposts.filter(pl.col('orig_poster') != ab_did)
-    # only analyze the first repost by the attention broker
-    next_repost_too_close = set()
-    for op, gr in df_reposts.group_by(pl.col('orig_poster')):
-        srt = sorted(gr['created_at'])
-        if len(srt) > 1:
-            if (srt[1] - srt[0]).days < days_buffer:
-                next_repost_too_close.add(op[0])
 
-    df_reposts = df_reposts.filter(~pl.col('orig_poster').is_in(next_repost_too_close))
+    # only analyze the first repost by the attention broker
     df_reposts = df_reposts.group_by(pl.col('orig_poster')).agg(
         pl.col('created_at').min())
     tot_reposts = len(df_reposts)
