@@ -2,8 +2,8 @@ import datetime as dt
 import json
 from zoneinfo import ZoneInfo
 
-FILEPATH = '/scratch/nte5cp' # change this for your machine
-FILEPATH_OUT = '/home/nte5cp'
+FILEPATH = '/Users/a404/attention-brokers-bsky' # change this for your machine
+FILEPATH_OUT = FILEPATH # change this for your machine
 
 # set conservative upper bound on repost events we'll study.
 REPOST_CUTOFF = dt.datetime(year=2025, month=9, day=15, tzinfo=ZoneInfo("UTC"))
