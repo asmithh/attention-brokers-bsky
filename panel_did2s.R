@@ -18,13 +18,11 @@ cls = c(
   tot_non_fol = "numeric"
 )
 
-acct = 'jamellebouie.net'
-hrs = 1
+acct = 'anneapplebaum.bsky.social'
+hrs = 2
 periods_out = 12
 fpath_did = '~/attention-brokers-bsky'
-fname_did = glue('{fpath_did}/{acct}_follows_to_ops_and_never_reposted_controls_period_{hrs}_hrs.csv')
-
-pops <- fromJSON(glue('{fpath_did}/{acct}_new_controls_population_count_panel.json'))
+fname_did = glue('{fpath_did}/total_follower_accumulation_data/{acct}_follows_to_ops_and_never_reposted_controls_period_2.0_hrs.csv')
 
 data = fread(
   fname_did,
@@ -37,8 +35,8 @@ data$rel_period <- if_else(
   data$period - data$period_treated,
 )
 
-data$tot_ab_fol = data$tot_ab_fol / pops$ab_fol
-data$tot_non_fol = data$tot_non_fol / pops$non_fol
+data$tot_ab_fol = data$tot_ab_fol # / pops$ab_fol
+data$tot_non_fol = data$tot_non_fol # / pops$non_fol
 data$log_tot_ab_fol = log(data$tot_ab_fol)
 data$log_tot_non_fol = log(data$tot_non_fol)
 data$treat <- (data$period >= data$period_treated) * 1
@@ -78,7 +76,9 @@ ggiplot(
 )
 
 compare_coefs <- function(estimate0, se0, estimate1, se1) {
-  return(pnorm((estimate1 - estimate0) / (sqrt(se0^2 + se1 ^ 2))))
+  zstat = (estimate1 - estimate0) / (sqrt(se0^2 + se1 ^ 2))
+  print(zstat)
+  return(pnorm(zstat))
 }
 
 table_fol <- broom::tidy(es_fol)
@@ -107,23 +107,23 @@ compare_coefs(
   table_fol$std.error[periods_out]
 )
 
-# sensitivity_results <- es_fol |>
-#   # Take fixest obj and convert for `honest_did_did2s`
-#   get_honestdid_obj_did2s(coef_name = "rel_period") |>
-#   # Run sensitivity analysis
-#   honest_did_did2s(
-#     e = 1,
-#     type = "relative_magnitude",
-#     Mbarvec = seq(from = 0.5, to = 4, by = 0.5)
-#   )
-# HonestDiD::createSensitivityPlot_relativeMagnitudes(
-#   sensitivity_results$robust_ci,
-#   sensitivity_results$orig_ci
-# ) +
-#   ggtitle(glue("Sensitivity Analysis on Relative Magnitude \n for {acct}")) +
-#   theme(
-#     plot.title=element_text( hjust=0.5, face='bold')
-#   )
+sensitivity_results <- es_fol |>
+  # Take fixest obj and convert for `honest_did_did2s`
+  get_honestdid_obj_did2s(coef_name = "rel_period") |>
+  # Run sensitivity analysis
+  honest_did_did2s(
+    e = 1,
+    type = "relative_magnitude",
+    Mbarvec = seq(from = 0.5, to = 4, by = 0.5)
+  )
+HonestDiD::createSensitivityPlot_relativeMagnitudes(
+  sensitivity_results$robust_ci,
+  sensitivity_results$orig_ci
+) +
+  ggtitle(glue("Sensitivity Analysis on Relative Magnitude \n for {acct}")) +
+  theme(
+    plot.title=element_text( hjust=0.5, face='bold')
+  )
 msummary(
   es_fol,
   stars = TRUE,
