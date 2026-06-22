@@ -70,7 +70,12 @@ for handle in AB_HANDLES:
             # ignore accts not followed by the attention broker.
             if orig_poster not in accts_to_unit_id:
                 continue
-
+                
+            # if repost happened before the AB followed OP, we don't want to count this repost.
+            if row['created_at'] < followed_by_ab.filter(pl.col('to') == orig_poster)['created_at'].to_list()[0]:
+                print('followed after repost', flush=True)
+                continue
+                
             # compute number of n-hour periods elapsed from earliest repost until this repost.
             repost_created_at = pl.DataFrame({'created_at': [row['created_at']]})
             repost_period = (repost_created_at.item() - min_repost_day).total_seconds() // (60 * 60 * HRS_PERIOD)
