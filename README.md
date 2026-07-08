@@ -2,7 +2,7 @@
 This repo contains code and some data to analyze follower accumulation patterns before and after an attention broker's reposts. Attention brokers, or *tertius amplificans,* are influential accounts whose amplification (i.e. reposting) of other accounts increases the rate at which their followers follow the amplified accounts.  
 
 ## Python Files
-* `get_control_and_reposted_full_trajectories.py`: This lets us collate a dataset for causal inference. We keep track of the total accumulated follows from an attention broker's followers and non-followers to reposted (followed by the attention broker & reposted in the time period of interest) and control accounts (followed by the attention broker but never reposted). We run this as `python3 count_follower_non_follower_populations.py HANDLES_IN.txt $HRS_PERIOD`, where `HANDLES_IN.txt` is a .txt file with an attention broker's Bluesky handle on each line. `HRS_PERIOD` is an integer indicating how many hours each time period we count follows for should be. Right now I'm using 2 hours' worth of granularity; sub-hour reslution may be worth exploring.
+* `get_control_and_reposted_full_trajectories.py`: This lets us collate a dataset for causal inference. We keep track of the total accumulated follows from an attention broker's followers and non-followers to reposted (followed by the attention broker & reposted in the time period of interest) and control accounts (followed by the attention broker but never reposted). We run this as `python3 get_control_and_reposted_full_trajectories HANDLES_IN.txt $HRS_PERIOD`, where `HANDLES_IN.txt` is a .txt file with an attention broker's Bluesky handle on each line. `HRS_PERIOD` is a float indicating how many hours each time period we count follows for should be. Right now I'm using 2 hours' worth of granularity; sub-hour reslution may be worth exploring.
 * `get_reposts.py`: used to obtain reposts for a given Bluesky handle (or list of handles) and write the data to a JSON blob.
 * `utils.py`: Contains utility functions for data parsing.
 
@@ -22,10 +22,8 @@ In order to run this pipeline from scratch for a new attention broker, you'll ne
 
 ## Files That Aren't Code
 * `plots/event_study_did2s` contains event study plots, which show the causal effect of the repost on following rates over time.
-* `plots/trends` has plots with mean following rates and 95% bootstrapped confidence intervals for followers and non-followers & control and reposted accounts.
 * `plots/timing` has plots that show the distribution of time elapsed between original post and repost for each attention broker.
-* `honestdid` contains plots indicating the relative magnitude of post-treatment parallel trends violations, as compared to pre-treatment violations, at which our results lose statistical significance.
-* `population_counts/*.json` contains population count JSON files for each attention broker we studied in this analysis.
+* `plots/honestdid` contains plots indicating the relative magnitude of post-treatment parallel trends violations, as compared to pre-treatment violations, at which our results lose statistical significance.
 * `total_follower_accumulation_data/*.csv.gz` contains gzipped CSVS with total follower accumulation data for each attention broker's followers and non-followers for reposted and control accounts. Note that these files can be upwards of 150 MB when expanded, so storing them without compression in Github will be difficult.
 * `requirements.txt` contains minimal Python package requirements to use this code.
 
