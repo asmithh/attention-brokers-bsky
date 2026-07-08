@@ -125,7 +125,7 @@ HonestDiD::createSensitivityPlot_relativeMagnitudes(
     plot.title=element_text( hjust=0.5, face='bold')
   )
 msummary(
-  es_fol,
+  es_non,
   stars = TRUE,
   fmt = fmt_significant(3),
   shape=term ~ model + statistic,
